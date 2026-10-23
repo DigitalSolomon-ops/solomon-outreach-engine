@@ -1,0 +1,532 @@
+# Solomon Leadgen capability registry.
+#
+# Every provider the engine knows: what it can do, its FREE allowance, and how to
+# call it. The engine lists Secret Manager secret NAMES (never values) and marks a
+# provider "connected" when its secret exists. Connected providers join the
+# rotation; the rest are shown on the Connections page as recommendations with
+# the vault slot to paste the key into (slot global/<x> -> secret global-<x>).
+#
+# Research date: 2026-10-22. "official" = read on the vendor's own pricing/docs
+# page; "unverified" = third-party source or the official page was unclear.
+# Free tiers change often: the monthly provider scout re-checks these.
+#
+# status:   wired     = adapter exists in leadgen/providers
+#           candidate = adapter not built yet (no adapter = never in the rotation)
+#           skip      = researched, not worth it at $0 (kept so it isn't re-researched)
+# period:   month | day | once (one-time signup credits never reset)
+# priority: rotation order within a capability; lower runs first. Recurring free
+#           allowances come before one-time ones, so one-time credits are kept as reserve.
+
+operator_policy:
+  paid_monthly_cap_usd: 0          # free allowances only (operator decision 2026-10-22)
+  prefer_recurring_over_once: true
+  # Providers with card_on_file: true can bill past the free tier and offer no
+  # hard cap (HERE confirmed: no hard transaction limit on non-Enterprise plans).
+  # For these the engine stops at card_safety_ratio of the free allowance, reads
+  # the provider's own usage figure before each run where it has a usage API,
+  # and disables the provider for the rest of the period on any billing or
+  # overage signal, with an immediate email to Marcus. Not one unit past free.
+  card_safety_ratio: 0.9
+
+# Secret names. Keys added 2026-10-22 were saved in the Credentials surface as
+# CUSTOM credentials named "global/<vendor>" (vault ids custom/global-<vendor>).
+# Confirm the exact Secret Manager name the vault writes for a custom
+# credential (likely "global-<vendor>") in services/vault/src/server.ts.
+# Older keys use their own names, listed per provider under secret_aliases.
+# The inventory matches a provider when ANY of secret / secret_aliases exists.
+
+providers:
+
+  # ------------------------------------------------------------------ discovery
+  - name: google_places
+    status: wired    
+    secret: global-google-places
+    secret_aliases: [GOOGLE_PLACES_API_KEY]   # existing key from Aug 2026; card on file via Cloud billing
+    card_on_file: true
+    capabilities: [discover_maps, enrich_reviews]
+    free: {amount: 1000, unit: request, period: month}
+    typical_cost: "Text Search Enterprise: 1 request = 1 page of up to 20 places"
+    card_required: true            # Cloud billing account; $0 charged under the caps
+    auth: "headers X-Goog-Api-Key + X-Goog-FieldMask (required)"
+    endpoint: "POST https://places.googleapis.com/v1/places:searchText"
+    docs: https://developers.google.com/maps/billing-and-pricing/pricing
+    verified: official
+    priority: 10
+    notes: >
+      Free monthly caps per SKU: Text Search Pro 5,000, Enterprise 1,000; Place Details
+      Essentials 10,000, Pro 5,000, Enterprise 1,000, Enterprise+Atmosphere 1,000.
+      websiteUri/nationalPhoneNumber/rating/userRatingCount are Enterprise-tier fields,
+      reviews is Enterprise+Atmosphere (field-to-SKU mapping from Google's Place Details
+      docs; confirm the field mask lands on the intended SKU). ~20k places/month at $0.
+      MAPS TERMS: do not store Places content beyond what the terms allow. Store only
+      place_id; take website/phone from the business's own site, use rating/reviews in
+      the moment for the lead brief, and keep only our own derived observations.
+
+  - name: outscraper_maps
+    status: wired    
+    secret: global-outscraper
+    card_on_file: true                         # billing page reached at signup; overage is billed
+    capabilities: [discover_maps]
+    free: {amount: 500, unit: place, period: month}
+    card_required: unknown
+    docs: https://outscraper.com/pricing/
+    verified: official
+    priority: 20
+    notes: "Resets every 30 days. Overage is billed ($3/1k), so the cap must hold."
+
+  - name: serpapi_maps
+    status: wired
+    secret: global-serpapi
+    capabilities: [discover_maps]
+    free: {amount: 250, unit: request, period: month}
+    typical_cost: "1 search = 1 page (~20 places); empty/failed searches free; 50/hour cap"
+    card_required: unknown
+    endpoint: "GET https://serpapi.com/search?engine=google_maps&api_key="
+    docs: https://serpapi.com/pricing
+    verified: official
+    priority: 30
+
+  - name: apify_maps
+    status: wired
+    secret: global-apify
+    secret_aliases: [APIFY_TOKEN]
+    capabilities: [discover_maps]
+    free: {amount: 5, unit: usd_credit, period: month}
+    typical_cost: "Google Maps actor from ~$1.50 per 1k places; contact/detail add-ons +$2/1k each"
+    card_required: false
+    docs: https://apify.com/pricing
+    verified: official
+    priority: 40
+    notes: "Account is blocked (not billed) once the $5 is spent, until the next cycle."
+
+  - name: hasdata_maps
+    status: wired    
+    secret: global-hasdata
+    capabilities: [discover_maps, scrape]
+    free: {amount: 1000, unit: credit, period: month}
+    typical_cost: "free plan includes 100 Maps requests + 100 SERP requests a month"
+    card_required: false
+    docs: https://hasdata.com/prices
+    verified: official
+    priority: 50
+
+  - name: foursquare_places
+    status: wired    
+    secret: global-foursquare
+    capabilities: [discover_maps]
+    free: {amount: 500, unit: request, period: unknown}
+    card_required: unknown
+    docs: https://foursquare.com/pricing/
+    verified: unverified
+    priority: 60
+    notes: >
+      Website/phone are Pro fields (free tier); rating/hours are Premium (paid from the
+      first call), so this is useful for website and phone only. Free volume is
+      unclear: "up to 10,000 free Pro calls" vs a 0-500 $0 row.
+
+  - name: geoapify_places
+    status: wired    
+    secret: global-geoapify
+    capabilities: [discover_maps]
+    free: {amount: 3000, unit: credit, period: day}
+    typical_cost: "1 credit per 20 places; Place Details 1 credit"
+    card_required: false
+    endpoint: "GET https://api.geoapify.com/v2/places?apiKey="
+    docs: https://www.geoapify.com/pricing-details/
+    verified: official
+    priority: 70
+    notes: "OpenStreetMap data: names/addresses are good, website/phone are sparse, no ratings. Commercial use OK with attribution."
+
+  - name: here_discover
+    status: wired    
+    secret: global-here
+    card_on_file: true                         # operator has a card on HERE; no hard cap available
+    usage_api: "HERE Usage API (find the endpoint in HERE docs; see docs.here.com/here-kb/docs/cannot-set-transaction-limit-per-here-app-id)"  # stop at 90% of 5,000
+    capabilities: [discover_maps]
+    free: {amount: 5000, unit: request, period: month}
+    docs: https://developer.here.com/pricing
+    verified: official
+    priority: 80
+    notes: "No ratings. Stricter rate limits without payment details on file."
+
+  - name: tomtom_search
+    status: skip
+    capabilities: [discover_maps]
+    free: {amount: 2500, unit: request, period: month}
+    docs: https://docs.tomtom.com/pricing
+    notes: "Mostly duplicates HERE/Geoapify; no ratings."
+
+  - name: serper
+    status: skip
+    capabilities: [discover_maps, discover_web]
+    free: {amount: 2500, unit: request, period: once}
+    docs: https://serper.dev
+    verified: unverified
+    notes: "One-time only."
+
+  # ----------------------------------------------------------------- web search
+  - name: nimble
+    status: wired
+    secret: global-nimble
+    capabilities: [discover_web, scrape]
+    free: {amount: 5000, unit: request, period: month}
+    typical_cost: "search 1, extract 1 (shared pool)"
+    card_required: false
+    endpoint: "POST https://sdk.nimbleway.com/v2/search | /v2/extract, Authorization: Bearer"
+    docs: https://nimbleway.com/pricing
+    verified: official
+    priority: 10
+
+  - name: linkup
+    status: wired    
+    secret: global-linkup
+    capabilities: [discover_web]
+    free: {amount: 20, unit: usd_credit, period: month}
+    typical_cost: "standard search $0.005 (~4,000/month)"
+    card_required: unknown
+    docs: https://docs.linkup.so
+    verified: official
+    priority: 20
+    notes: "Signup needs a professional email."
+
+  - name: exa
+    status: wired
+    secret: global-exa
+    capabilities: [discover_web]
+    free: {amount: 10, unit: usd_credit, period: month}
+    typical_cost: "$4-12 per 1k searches (~830-2,500/month)"
+    card_required: unknown        # official pages conflict
+    docs: https://exa.ai/pricing
+    verified: official
+    priority: 30
+
+  - name: brave_search
+    status: wired    
+    secret: global-brave
+    card_on_file: true
+    capabilities: [discover_web]
+    free: {amount: 5, unit: usd_credit, period: month}
+    typical_cost: "$5 per 1k (~1,000/month)"
+    card_required: true           # "to prevent abuse"
+    docs: https://brave.com/search/api/
+    verified: official
+    priority: 40
+    notes: "Storing results needs a plan with storage rights: use results to find sites, don't keep them."
+
+  - name: tavily
+    status: wired
+    secret: global-tavily
+    capabilities: [discover_web]
+    free: {amount: 1000, unit: credit, period: month}
+    typical_cost: "basic 1, advanced 2"
+    card_required: false
+    docs: https://docs.tavily.com/documentation/api-credits
+    verified: official
+    priority: 50
+
+  - name: firecrawl
+    status: wired
+    secret: global-firecrawl
+    capabilities: [discover_web, scrape]
+    free: {amount: 1000, unit: credit, period: month}
+    typical_cost: "scrape 1 per page; search 2 per 10 results (shared pool)"
+    card_required: false
+    docs: https://www.firecrawl.dev/pricing
+    verified: official
+    priority: 60
+
+  - name: searxng
+    status: candidate
+    secret: null                  # self-hosted; needs a URL setting, not a key
+    capabilities: [discover_web]
+    free: {amount: null, unit: request, period: unlimited}
+    priority: 90
+    notes: "Optional self-hosted backstop. Upstream engines rate-limit heavy use. Build only if web search runs dry."
+
+  # --------------------------------------------------------------------- scrape
+  - name: jina_reader
+    status: wired    
+    secret: null                  # keyless works; always available
+    capabilities: [scrape]
+    free: {amount: null, unit: request, period: unlimited}
+    typical_cost: "keyless: free at 20 requests/minute"
+    endpoint: "GET https://r.jina.ai/<url>"
+    docs: https://jina.ai/reader/
+    verified: official
+    priority: 5
+    notes: >
+      Returns readable text/markdown, not raw HTML with scripts, so it can't support
+      absence observations (no chat, no booking). Use it for emails, about-page text and
+      owner names; keep a raw-HTML provider for the observation pass.
+
+  - name: zenrows
+    status: wired    
+    secret: global-zenrows
+    capabilities: [scrape]
+    free: {amount: 5000, unit: credit, period: month}
+    typical_cost: "basic 1, JS render 5, premium proxy 10"
+    card_required: false
+    docs: https://www.zenrows.com/pricing
+    verified: official
+    priority: 15
+
+  - name: scrapingant
+    status: wired    
+    secret: global-scrapingant
+    capabilities: [scrape]
+    free: {amount: 10000, unit: credit, period: month}
+    typical_cost: "default request 10 credits (~1,000 pages)"
+    card_required: unknown        # official pages conflict
+    docs: https://scrapingant.com/pricing
+    verified: official
+    priority: 25
+
+  - name: scrape_do
+    status: wired    
+    secret: global-scrapedo
+    capabilities: [scrape]
+    free: {amount: 1000, unit: credit, period: month}
+    typical_cost: "1 credit basic; only successful requests charged"
+    card_required: unknown
+    docs: https://scrape.do/pricing/
+    verified: unverified
+    priority: 35
+
+  - name: scraperapi
+    status: wired    
+    secret: global-scraperapi
+    capabilities: [scrape]
+    free: {amount: 1000, unit: credit, period: month}
+    typical_cost: "standard 1, render 10"
+    endpoint: "GET https://api.scraperapi.com/?api_key=&url="
+    docs: https://www.scraperapi.com/pricing/
+    verified: unverified
+    priority: 45
+
+  - name: scrapingbee
+    status: skip
+    capabilities: [scrape]
+    free: {amount: 1000, unit: credit, period: once}
+    notes: "One-time trial."
+
+  # ------------------------------------------------------------- verify_email
+  - name: verifalia
+    status: skip                  # operator decision 2026-10-22: leave out of the build
+    secret: global-verifalia
+    capabilities: [verify_email]
+    free: {amount: 25, unit: credit, period: day}
+    api_on_free: true
+    typical_cost: "1 per address; HTTP 402 when the day's credits are gone"
+    docs: https://verifalia.com/help/billing-pricing/how-do-daily-free-credits-work
+    verified: official
+    priority: 10
+    notes: "~750/month. Resets at midnight GMT, no rollover."
+
+  - name: mailboxvalidator
+    status: wired    
+    secret: global-mailboxvalidator
+    capabilities: [verify_email]
+    free: {amount: 300, unit: credit, period: month}
+    api_on_free: true
+    docs: https://www.mailboxvalidator.com/plans
+    verified: official
+    priority: 20
+
+  - name: zerobounce
+    status: wired    
+    secret: global-zerobounce
+    secret_aliases: [ZEROBOUNCE_API_KEY]       # two keys exist; prefer global-zerobounce
+    capabilities: [verify_email, enrich_people]
+    free: {amount: 100, unit: credit, period: month}
+    api_on_free: likely
+    endpoint: "GET https://api.zerobounce.net/v2/validate?api_key=&email="
+    docs: https://www.zerobounce.net/email-validation-pricing
+    verified: official
+    priority: 30
+    notes: "Plus 10 finder credits/month. Signup needs a business domain."
+
+  - name: abstract_email
+    status: wired    
+    secret: global-abstract-email
+    capabilities: [verify_email]
+    free: {amount: 100, unit: request, period: month}
+    api_on_free: true
+    endpoint: "GET https://emailvalidation.abstractapi.com/v1/?api_key=&email="
+    docs: https://www.abstractapi.com/api/email-verification-validation-api
+    verified: official
+    priority: 40
+    notes: "Lighter checks than a dedicated verifier; treat its 'deliverable' as weaker than verifalia/zerobounce."
+
+  - name: reoon
+    status: wired    
+    secret: global-reoon
+    capabilities: [verify_email]
+    free: {amount: 20, unit: credit, period: day}
+    api_on_free: true
+    endpoint: "GET https://emailverifier.reoon.com/api/v1/verify?email=&key=&mode=quick"
+    docs: https://www.reoon.com/email-verifier/
+    verified: official
+    priority: 50
+    notes: "Daily credits 'renew on login', which may need a person to log in each day. The adapter must treat a 402/limit as exhausted for the day and not assume it renews unattended."
+
+  - name: millionverifier
+    status: wired
+    secret: global-millionverifier
+    capabilities: [verify_email]
+    free: {amount: 500, unit: credit, period: once}
+    docs: https://help.millionverifier.com
+    verified: official
+    priority: 80                  # one-time: keep as reserve behind the recurring ones
+    notes: "One-time signup credits (500 with a business email), NOT monthly."
+
+  - name: hunter_verify
+    status: wired    
+    secret: global-hunter
+    capabilities: [verify_email]
+    free: {amount: 50, unit: credit, period: month}
+    typical_cost: "0.5 credit per verification; pool shared with hunter domain search"
+    priority: 90                  # save Hunter credits for finding owners
+    docs: https://hunter.io/pricing
+
+  - name: mx_check
+    status: wired
+    secret: null
+    capabilities: [verify_email]
+    free: {amount: null, unit: request, period: unlimited}
+    priority: 99
+    notes: "Domain accepts mail. Says nothing about the mailbox; verdict mx_only."
+
+  # ----------------------------------------------------------- enrich_people
+  - name: getprospect
+    status: wired    
+    secret: global-getprospect
+    capabilities: [enrich_people, verify_email]
+    free: {amount: 50, unit: email, period: month}
+    api_on_free: true
+    card_required: false
+    docs: https://getprospect.com/pricing
+    verified: official
+    priority: 10
+    notes: "Plus 100 verifications/month."
+
+  - name: hunter_domain
+    status: wired    
+    secret: global-hunter
+    capabilities: [enrich_people]
+    free: {amount: 50, unit: credit, period: month}
+    api_on_free: true
+    endpoint: "GET https://api.hunter.io/v2/domain-search?domain=&api_key="
+    docs: https://hunter.io/api-documentation/v2
+    verified: official
+    priority: 20
+    notes: "Free plan returns at most 10 results per domain; 15 requests/second."
+
+  - name: tomba
+    status: wired    
+    secret: global-tomba
+    capabilities: [enrich_people]
+    free: {amount: 25, unit: search, period: month}
+    api_on_free: true
+    card_required: false
+    docs: https://tomba.io/pricing
+    verified: official
+    priority: 30
+    notes: "Tomba needs a key AND a secret: store the credential as KEY:SECRET (or JSON {key, secret})."
+
+  - name: apollo
+    status: wired    
+    secret: global-apollo
+    capabilities: [enrich_people]
+    free: {amount: null, unit: credit, period: month}
+    api_on_free: partial
+    auth: "header x-api-key"
+    endpoint: "POST https://api.apollo.io/api/v1/people/match"
+    docs: https://docs.apollo.io
+    verified: unverified
+    priority: 40
+    notes: "Free-plan API endpoints and amounts aren't published. The adapter must probe once and disable itself if refused."
+
+  - name: quickenrich
+    status: wired
+    secret: global-quickenrich
+    capabilities: [enrich_people]
+    free: {amount: 300, unit: credit, period: month}
+    typical_cost: "domain search: flat 1 credit per page with results (no title filter); 0 when none found"
+    card_required: unknown
+    auth: "header Authorization: Bearer <key>"
+    endpoint: "GET https://app.quickenrich.io/api/employees/dataset-search?company_url=&has_email=true"
+    docs: https://app.quickenrich.io/docs
+    verified: unverified
+    priority: 25
+    notes: >
+      Found by the monthly scout (2026-10). Homepage FAQ claims 300 free monthly lookups; the
+      pricing page lists no free plan. Live 2026-10-23: the API works on this key with 300
+      credits (meta.remaining_credits); whether they reset monthly is not yet observed.
+      No verification status in the API: every address goes through our verifier first.
+
+  - name: anymailfinder
+    status: wired
+    secret: ANY-MAIL-FINDER-KEY
+    secret_aliases: [email-verifier-api-key]   # same value saved twice on 2026-08-27 (hash-compared)
+    capabilities: [enrich_people, verify_email]
+    free: {amount: 27, unit: credit, period: once}
+    typical_cost: "company search 1 credit only when valid emails are found; verify 0.2 credit each"
+    card_required: false
+    auth: "header Authorization: <key> (no Bearer)"
+    endpoint: "POST https://api.anymailfinder.com/v5.1/find-email/company | /v5.1/verify-email"
+    docs: https://anymailfinder.com/email-finder-api/docs
+    verified: official
+    priority: 60                  # one-time: reserve behind the recurring finders and verifiers
+    notes: >
+      Trial account: 27 credits left on 2026-10-23 (read from GET /v5.1/account, free).
+      One-time; 402 upgrade_needed when spent. Only valid_emails are used; risky -> unknown.
+
+  - name: snov
+    status: skip
+    capabilities: [enrich_people]
+    notes: "Free plan has no API."
+  - name: wappalyzer
+    status: skip
+    capabilities: [enrich_tech]
+    notes: "Free plan has no API."
+  - name: yelp_fusion
+    status: skip
+    notes: "No free tier since 2024 (trial then paid)."
+  - name: opencorporates
+    status: skip
+    notes: "Free API only for public-benefit users."
+  - name: nc_sos_bulk
+    status: skip
+    notes: "Bulk data is $2,000/yr plus setup; the web search is manual only."
+
+  # --------------------------------------------------------------- enrich / sizing
+  - name: builtwith_free
+    status: candidate
+    secret: global-builtwith
+    capabilities: [enrich_tech]
+    free: {amount: null, unit: request, period: unlimited}
+    typical_cost: "1 request/second; returns technology group counts, not product names"
+    endpoint: "GET https://api.builtwith.com/free1/api.json?KEY=&LOOKUP=<domain>"
+    docs: https://api.builtwith.com/free-api
+    verified: official
+    priority: 50
+    notes: "Low value: the HTML tech-stack read in extract.py already names booking/chat/CMS vendors."
+
+  - name: census_cbp
+    status: wired    
+    secret: global-census      # use whatever census secret the inventory finds
+    secret_aliases: [US-Census-Bureau]
+    capabilities: [market_size]
+    free: {amount: null, unit: request, period: unlimited}
+    endpoint: "GET https://api.census.gov/data/2023/cbp?get=ESTAB,NAICS2017_LABEL&for=county:071&in=state:37&NAICS2017=238220&key="
+    docs: https://www.census.gov/data/developers/data-sets/cbp-zbp/cbp-api.html
+    verified: official
+    priority: 10
+    notes: "Latest vintage 2023. Business counts by county and NAICS for strategist sizing; not a lead source. Since 2025 every Census API query needs a key (keyless calls redirect to missing_key.html)."
+
+  # ----------------------------------------------------------------------- write
+  - name: anthropic
+    status: wired
+    secret: global-anthropic
+    capabilities: [write]
+    notes: "Haiku writes and critiques, Sonnet fixes failures and plans. Prices in config/models.yaml."

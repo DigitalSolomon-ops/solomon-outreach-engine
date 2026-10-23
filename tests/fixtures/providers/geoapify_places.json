@@ -1,0 +1,70 @@
+{
+  "_note": "geocode = Geoapify Forward Geocoding docs example (format=json), trimmed. places = Geoapify gives no Places example body; built from the documented Response Object (GeoJSON FeatureCollection, properties name/formatted/categories/place_id) plus website/contact/opening_hours as documented for Place Details.",
+  "geocode": {
+    "results": [
+      {
+        "datasource": {
+          "sourcename": "openstreetmap",
+          "attribution": "\u00a9 OpenStreetMap contributors",
+          "license": "Open Database License",
+          "url": "https://www.openstreetmap.org/copyright"
+        },
+        "housenumber": "1313",
+        "street": "Broadway",
+        "suburb": "G Street Neighborhood",
+        "city": "Tacoma",
+        "county": "Pierce County",
+        "state": "Washington",
+        "postcode": "98402",
+        "country": "United States of America",
+        "country_code": "us",
+        "lon": -122.43941302945888,
+        "lat": 47.25094496732003,
+        "formatted": "1313 Broadway, Tacoma, WA 98402, United States of America",
+        "address_line1": "1313 Broadway",
+        "address_line2": "Tacoma, WA 98402, United States of America",
+        "state_code": "WA",
+        "result_type": "building",
+        "place_id": "5194bdd3571f9c5ec0591fdef5f61ea04740f00102f90188669f1000000000c00203"
+      }
+    ]
+  },
+  "places": {
+    "type": "FeatureCollection",
+    "features": [
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Tacoma Electric Service",
+          "country": "United States of America",
+          "state": "Washington",
+          "city": "Tacoma",
+          "postcode": "98402",
+          "street": "Broadway",
+          "housenumber": "1200",
+          "lat": 47.2501,
+          "lon": -122.4391,
+          "formatted": "Tacoma Electric Service, 1200 Broadway, Tacoma, WA 98402, United States of America",
+          "address_line1": "Tacoma Electric Service",
+          "address_line2": "1200 Broadway, Tacoma, WA 98402, United States of America",
+          "categories": ["service", "service.electrician"],
+          "website": "https://tacomaelectric.example",
+          "opening_hours": "Mo-Fr 08:00-17:00",
+          "contact": {"phone": "+1 253 555 0100"},
+          "place_id": "51a1b2c3d4e5f6"
+        },
+        "geometry": {"type": "Point", "coordinates": [-122.4391, 47.2501]}
+      },
+      {
+        "type": "Feature",
+        "properties": {
+          "name": "Sparky's",
+          "formatted": "Sparky's, 1300 Broadway, Tacoma, WA 98402, United States of America",
+          "categories": ["service", "service.electrician"],
+          "place_id": "51f6e5d4c3b2a1"
+        },
+        "geometry": {"type": "Point", "coordinates": [-122.4395, 47.2509]}
+      }
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "source": "https://docs.scrapingant.com/api-basics ; https://docs.scrapingant.com/errors ; https://docs.scrapingant.com/credits-cost",
+  "note": "'ok' body is the docs' example.com response (style block trimmed). 'quota' and 'bad_token' details are the docs' exact 403 messages. Headers named in docs (Ant-credits-cost, Ant-page-status-code). target_404 detail text is constructed (docs give the meaning, not the text).",
+  "ok": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "text/html",
+      "Ant-credits-cost": "1",
+      "Ant-page-status-code": "200"
+    },
+    "body": "<!DOCTYPE html><html><head>\n    <title>Example Domain</title>\n    <meta charset=\"utf-8\">\n</head>\n<body>\n<div>\n    <h1>Example Domain</h1>\n    <p>This domain is for use in illustrative examples in documents. You may use this\n        domain in literature without prior coordination or asking for permission.</p>\n    <p><a href=\"https://www.iana.org/domains/example\">More information...</a></p>\n</div>\n</body></html>"
+  },
+  "quota": {
+    "status": 403,
+    "json": {
+      "detail": "Requests quota limit reached. Please visit https://app.scrapingant.com/subscriptions to upgrade your plan and get more requests"
+    }
+  },
+  "bad_token": {
+    "status": 403,
+    "json": {
+      "detail": "API token is wrong. Please visit https://app.scrapingant.com/profile to check your token settings"
+    }
+  },
+  "target_404": {
+    "status": 404,
+    "json": {
+      "detail": "Our browser was unable to open this URL"
+    }
+  }
+}

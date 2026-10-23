@@ -1,0 +1,18 @@
+# Creates the unsubscribe signing key global-leadgen-hmac once, inside Cloud Build,
+# when the deploying account can't create secrets itself. The value is generated
+# in the build container and piped straight into Secret Manager; it is never echoed.
+steps:
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        if gcloud secrets describe global-leadgen-hmac >/dev/null 2>&1; then
+          echo "global-leadgen-hmac already exists"; exit 0
+        fi
+        head -c 32 /dev/urandom | base64 | tr -d '\n' | \
+          gcloud secrets create global-leadgen-hmac --replication-policy automatic --data-file=-
+        echo "global-leadgen-hmac created"
+options:
+  logging: CLOUD_LOGGING_ONLY

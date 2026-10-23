@@ -1,0 +1,39 @@
+{
+  "_source": "https://www.reoon.com/articles/api-documentation-of-reoon-email-verifier/",
+  "_note": "Power-mode example verbatim, // comments stripped; the page obfuscates the email so it is rebuilt from username+domain. Docs do not document the out-of-credits/daily-limit body; error shape is the documented generic {status:error, reason}.",
+  "response": {
+    "email": "[email\u00a0protected]",
+    "status": "safe",
+    "overall_score": 98,
+    "username": "jhon123",
+    "domain": "gmail.com",
+    "is_safe_to_send": true,
+    "is_valid_syntax": true,
+    "is_disposable": false,
+    "is_role_account": false,
+    "can_connect_smtp": true,
+    "has_inbox_full": false,
+    "is_catch_all": false,
+    "is_deliverable": true,
+    "is_disabled": false,
+    "is_spamtrap": false,
+    "is_free_email": true,
+    "mx_accepts_mail": true,
+    "mx_records": [
+      "alt3.gmail-smtp-in.l.google.com",
+      "alt2.gmail-smtp-in.l.google.com",
+      "alt4.gmail-smtp-in.l.google.com",
+      "alt1.gmail-smtp-in.l.google.com",
+      "gmail-smtp-in.l.google.com"
+    ],
+    "verification_mode": "power"
+  },
+  "errors": {
+    "error_shape": {
+      "body": {
+        "status": "error",
+        "reason": "<string>"
+      }
+    }
+  }
+}

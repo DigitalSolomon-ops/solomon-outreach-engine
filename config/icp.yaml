@@ -1,0 +1,74 @@
+# Solomon Leadgen: lanes (ICP + offer). Edit this file and run
+#   python -m leadgen icp push config/icp.yaml
+# to change who the daily job targets. No redeploy needed: the job reads the
+# pushed copy from Firestore first and falls back to this file.
+
+active_lanes: [ai-readiness-audit]
+
+lanes:
+  ai-readiness-audit:
+    offer:
+      name: AI Readiness Audit
+      # Facts the email writer may use. Nothing outside this list (plus the
+      # observations scraped from the prospect's own site) can appear in an email.
+      facts:
+        - The AI Readiness Audit is free.
+        - It takes about five minutes and covers eight questions.
+        - It scores the business on four areas Presence (being found, including by AI assistants), Conversation (answering calls, texts and forms), Intelligence (knowing which leads come from where) and Operations (time lost to manual work).
+        - The result names which area to fix first.
+      cta_url: https://digitalsolomon.com/audit
+      sender_name: Marcus Barber
+      sender_company: Digital Solomon
+
+    # Who to look for. Each segment x geo becomes one discovery query.
+    segments:
+      - {name: HVAC, query: "HVAC company"}
+      - {name: Plumbing, query: "plumbing company"}
+      - {name: Roofing, query: "roofing contractor"}
+      - {name: Water damage restoration, query: "water damage restoration"}
+      - {name: Med spa, query: "med spa"}
+      - {name: Dental, query: "dental office"}
+      - {name: Law firm, query: "personal injury law firm"}
+      - {name: Insurance agency, query: "independent insurance agency"}
+      - {name: Massage and wellness, query: "massage therapy"}
+    geos:
+      - Gastonia, NC
+      - Charlotte, NC
+      - Belmont, NC
+      - Mount Holly, NC
+      - Concord, NC
+      - Rock Hill, SC
+
+    # Prefer map providers for local businesses (they return the business's own
+    # website and phone); web search providers are the fallback.
+    prefer_kinds: [maps, web]
+
+    # Skip these: directories, franchise corporate sites, big chains.
+    exclude_domains:
+      - yelp.com
+      - angi.com
+      - homeadvisor.com
+      - bbb.org
+      - facebook.com
+      - instagram.com
+      - linkedin.com
+      - yellowpages.com
+      - thumbtack.com
+      - nextdoor.com
+      - mapquest.com
+      - google.com
+      - healthgrades.com
+      - zocdoc.com
+      - avvo.com
+      - findlaw.com
+      - justia.com
+      - servpro.com
+      - servicemaster.com
+      - aspendental.com
+    exclude_name_keywords: [franchise, corporate, headquarters]
+
+    limits:
+      queries_per_run: 6          # segment x geo pairs tried per day (rotates)
+      candidates_per_query: 10
+      new_leads_per_run: 40       # stop scraping once this many are qualified
+    recontact_after_days: 180     # never email the same domain twice inside this

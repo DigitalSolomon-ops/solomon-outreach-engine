@@ -1,0 +1,39 @@
+{
+  "_source": "https://www.mailboxvalidator.com/api-single-validation",
+  "_note": "BUILT from the documented response-field table (docs show no example JSON). Error body built from the documented error.error_code/error_message fields + code table (10004 -> HTTP 401).",
+  "response": {
+    "email_address": "jane.doe@example.com",
+    "base_email_address": "jane.doe@example.com",
+    "domain": "example.com",
+    "is_free": false,
+    "is_syntax": true,
+    "is_domain": true,
+    "is_smtp": true,
+    "is_verified": true,
+    "is_server_down": false,
+    "is_greylisted": false,
+    "is_disposable": false,
+    "is_suppressed": false,
+    "is_role": false,
+    "is_high_risk": false,
+    "is_catchall": false,
+    "is_dmarc_enforced": true,
+    "is_strict_spf": true,
+    "website_exist": true,
+    "mailboxvalidator_score": 0.86,
+    "time_taken": 0.71,
+    "status": true,
+    "credits_available": 299
+  },
+  "errors": {
+    "insufficient_credits": {
+      "status": 401,
+      "body": {
+        "error": {
+          "error_code": 10004,
+          "error_message": "Insufficient credits."
+        }
+      }
+    }
+  }
+}

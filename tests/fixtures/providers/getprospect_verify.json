@@ -1,0 +1,42 @@
+{
+  "_source": "https://getprospect.com/api-docs/email-verifier",
+  "_note": "Docs examples verbatim.",
+  "response": {
+    "success": true,
+    "data": {
+      "email": "emily.carter.sample@intercom.com",
+      "status": "valid",
+      "account": "emily.carter.sample",
+      "domain": "intercom.com",
+      "domain_status": "valid",
+      "smtp_provider": "google",
+      "free_email": false
+    },
+    "metadata": {
+      "timestamp": "2026-07-25T14:08:20.000Z",
+      "credits": {
+        "email_search": 482,
+        "email_verification": 499,
+        "reset_at": "2026-08-01T00:00:00.000Z"
+      }
+    }
+  },
+  "errors": {
+    "payment_required": {
+      "status": 402,
+      "body": {
+        "success": false,
+        "data": null,
+        "metadata": {
+          "timestamp": "2026-10-08T14:07:55.000Z"
+        },
+        "errors": [
+          {
+            "name": "PAYMENT_REQUIRED",
+            "message": "Workspace has reached its credit limit"
+          }
+        ]
+      }
+    }
+  }
+}

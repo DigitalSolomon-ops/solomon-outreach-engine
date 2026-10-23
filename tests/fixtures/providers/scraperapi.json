@@ -1,0 +1,20 @@
+{
+  "source": "https://docs.scraperapi.com/synchronous-apis/using-the-api-endpoint.md ; https://docs.scraperapi.com/responses-and-formats/api-status-codes.md ; https://docs.scraperapi.com/getting-started/quick-start/credits-and-requests-costs.md",
+  "note": "Docs show the request (example.com) but no literal response; body is example.com HTML. 403 and 404 texts are the docs' own status-code messages; sa-credit-cost header is documented.",
+  "ok": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "text/html",
+      "sa-credit-cost": "1"
+    },
+    "body": "<!DOCTYPE html><html><head>\n    <title>Example Domain</title>\n    <meta charset=\"utf-8\">\n</head>\n<body>\n<div>\n    <h1>Example Domain</h1>\n    <p>This domain is for use in illustrative examples in documents. You may use this\n        domain in literature without prior coordination or asking for permission.</p>\n    <p><a href=\"https://www.iana.org/domains/example\">More information...</a></p>\n</div>\n</body></html>"
+  },
+  "quota": {
+    "status": 403,
+    "body": "You have exhausted the API Credits available in this monthly cycle. You can upgrade your subscription or enable overages from your dashboard (https://dashboard.scraperapi.com/billing). For custom plan upgrades, please contact support (https://www.scraperapi.com/support/)."
+  },
+  "target_404": {
+    "status": 404,
+    "body": "Requested page does not exist."
+  }
+}

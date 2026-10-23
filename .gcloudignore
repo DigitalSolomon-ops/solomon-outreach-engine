@@ -1,0 +1,6 @@
+.state/
+.venv/
+tests/
+.pytest_cache/
+__pycache__/
+.git/

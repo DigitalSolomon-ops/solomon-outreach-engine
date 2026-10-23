@@ -1,0 +1,42 @@
+{
+  "_source": "https://anymailfinder.com/email-finder-api/docs (read 2026-10-23)",
+  "_note": "Responses copied from the docs; the company example is trimmed to 2 addresses per array.",
+  "company_ok": {
+    "credits_charged": 1,
+    "email_status": "valid",
+    "emails": [
+      "susan.smith@microsoft.com",
+      "john.doe@microsoft.com"
+    ],
+    "mx_domain": "outlook.com",
+    "mx_host": "microsoft-com.mail.protection.outlook.com",
+    "valid_emails": [
+      "susan.smith@microsoft.com",
+      "john.doe@microsoft.com"
+    ]
+  },
+  "company_not_found": {
+    "credits_charged": 0,
+    "email_status": "not_found",
+    "emails": [],
+    "valid_emails": []
+  },
+  "verify_ok": {
+    "credits_charged": 0.2,
+    "email_status": "valid",
+    "mx_domain": "google.com",
+    "mx_host": "aspmx.l.google.com"
+  },
+  "account": {
+    "credits_left": 8698,
+    "email": "john.doe@microsoft.com"
+  },
+  "error_402": {
+    "error": "upgrade_needed",
+    "message": "Your account does not have enough credits. Purchase more at https://app.anymailfinder.com/purchase."
+  },
+  "error_401": {
+    "error": "unauthorized",
+    "message": "Missing or invalid API key."
+  }
+}

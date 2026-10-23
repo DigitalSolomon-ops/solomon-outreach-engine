@@ -1,0 +1,146 @@
+{
+  "_source": "https://getprospect.com/api-docs/people-search",
+  "_note": "Docs examples verbatim (402 body from the Errors page; People Search documents 402 without its own body).",
+  "response": {
+    "success": true,
+    "data": [
+      {
+        "id": "64f1a2b3c4d5e6f7a8b9c0d1",
+        "full_name": "Emily Carter",
+        "first_name": "Emily",
+        "last_name": "Carter",
+        "email": {
+          "status": "valid",
+          "address": "emily.carter.sample@intercom.com",
+          "verified_at": "2026-06-18T09:12:44.000Z",
+          "checked_at": "2026-06-18T09:12:44.000Z",
+          "revealed": true
+        },
+        "mobile_phone": {
+          "status": "not_requested",
+          "number": null,
+          "revealed": false
+        },
+        "location": {
+          "city": "San Francisco",
+          "state": "California",
+          "state_code": "CA",
+          "country": "United States",
+          "country_code": "US",
+          "time_zone": "America/Los_Angeles",
+          "time_zone_offset": -7
+        },
+        "linkedin_url": "https://linkedin.com/in/emily-carter-sample",
+        "primary_position": {
+          "job_title": "Senior Product Marketing Manager",
+          "seniority": "Senior",
+          "departments": [
+            "Marketing"
+          ],
+          "company": {
+            "id": "64f1a2b3c4d5e6f7a8b9c0d2",
+            "name": "Intercom",
+            "logo": "https://logos.getprospect.com/64f1a2b3c4d5e6f7a8b9c0d2.jpg",
+            "industry": "Software Development",
+            "keywords": [
+              "customer messaging",
+              "AI customer service",
+              "help desk software"
+            ],
+            "naics_codes": [
+              511210
+            ],
+            "type": "Privately Held",
+            "business_type": "B2B",
+            "revenue_stream": "Subscriptions / Recurring",
+            "founded": 2011,
+            "employee_count": 900,
+            "employee_range": "501-1000",
+            "location": {
+              "city": "San Francisco",
+              "state": "California",
+              "state_code": "CA",
+              "country": "United States",
+              "country_code": "US",
+              "raw_address": "55 2nd St, San Francisco, CA 94105"
+            },
+            "other_locations": [
+              {
+                "city": "Chicago",
+                "state": "Illinois",
+                "state_code": "IL",
+                "country": "United States",
+                "country_code": "US",
+                "raw_address": "222 W Merchandise Mart Plaza, Chicago, IL 60654"
+              },
+              {
+                "city": "Dublin",
+                "state": null,
+                "state_code": null,
+                "country": "Ireland",
+                "country_code": "IE",
+                "raw_address": "2 Dockland Central, Dublin, Ireland"
+              }
+            ]
+          }
+        },
+        "other_positions": [
+          {
+            "job_title": "Product Marketing Lead (Advisor)",
+            "seniority": "Director",
+            "departments": [
+              "Marketing"
+            ],
+            "company": {
+              "id": "64f1a2b3c4d5e6f7a8b9c0d3",
+              "name": "Northwind Analytics",
+              "domain": "northwindanalytics-sample.com",
+              "logo": "https://logos.getprospect.com/64f1a2b3c4d5e6f7a8b9c0d3.jpg",
+              "industry": "Software Development",
+              "employee_count": 120,
+              "location": {
+                "city": "Austin",
+                "state": "Texas",
+                "state_code": "TX",
+                "country": "United States",
+                "country_code": "US",
+                "raw_address": null
+              }
+            }
+          }
+        ],
+        "saved": null
+      }
+    ],
+    "metadata": {
+      "timestamp": "2026-07-25T14:02:31.000Z",
+      "sort_by": "followers",
+      "sort_direction": "desc",
+      "pagination": {
+        "page": 1,
+        "per_page": 25,
+        "total_pages": 1,
+        "total_count": 1,
+        "total_is_estimate": false
+      }
+    }
+  },
+  "errors": {
+    "payment_required": {
+      "status": 402,
+      "body": {
+        "success": false,
+        "data": null,
+        "metadata": {
+          "timestamp": "2026-07-25T14:02:31.000Z"
+        },
+        "errors": [
+          {
+            "name": "PAYMENT_REQUIRED",
+            "message": "Workspace has reached its credit limit"
+          }
+        ]
+      }
+    }
+  }
+}

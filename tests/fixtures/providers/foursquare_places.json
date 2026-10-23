@@ -1,0 +1,31 @@
+{
+  "_note": "Foursquare's Place Search reference has a response SCHEMA but no example body; this is the minimal body built strictly from that schema (results[].fsq_place_id/name/categories/location/tel/website/date_closed, context).",
+  "results": [
+    {
+      "fsq_place_id": "4b0588c5f964a520c7d822e3",
+      "name": "Acme Heating & Air",
+      "categories": [
+        {"fsq_category_id": "5454144b498ec1f095bff2f2", "name": "Heating, Ventilating and Air Conditioning Contractor", "short_name": "HVAC", "plural_name": "HVAC Contractors"}
+      ],
+      "location": {"address": "100 Main St", "locality": "Gastonia", "region": "NC", "postcode": "28052", "country": "US", "formatted_address": "100 Main St, Gastonia, NC 28052"},
+      "tel": "(704) 555-0100",
+      "website": "https://www.acmehvac.example"
+    },
+    {
+      "fsq_place_id": "5a1f2e3d4c5b6a7980112233",
+      "name": "No Site Plumbing",
+      "categories": [{"fsq_category_id": "5454145f498ec1f095bff2f8", "name": "Plumber"}],
+      "location": {"formatted_address": "200 Oak Ave, Gastonia, NC 28054"},
+      "tel": "(704) 555-0101"
+    },
+    {
+      "fsq_place_id": "5c2d3e4f5a6b7c8d9e0f1122",
+      "name": "Closed Cooling Co",
+      "categories": [],
+      "location": {"formatted_address": "300 Elm St, Gastonia, NC 28052"},
+      "website": "https://closed.example",
+      "date_closed": "2024-03-01"
+    }
+  ],
+  "context": {}
+}

@@ -1,0 +1,67 @@
+{
+  "source": "https://docs.linkup.so/pages/documentation/endpoints/search/reference.md ; https://docs.linkup.so/pages/documentation/platform/errors.md",
+  "note": "Docs give no searchResults example; 'ok' is built strictly from the SearchResultsOutput / TextSearchResultOutput schema using the schema's own example values. Error envelope is the documented {statusCode, error:{code,message,details}}; codes from the official Python SDK _raise_linkup_error.",
+  "ok": {
+    "status": 200,
+    "json": {
+      "results": [
+        {
+          "type": "text",
+          "name": "Microsoft 2024 Annual Report",
+          "url": "https://www.microsoft.com/investor/reports/ar24/index.html",
+          "content": "Highlights from fiscal year 2024 compared with fiscal year 2023 included: Microsoft Cloud revenue increased 23% to $137.4 billion.",
+          "favicon": "https://www.microsoft.com/favicon.ico"
+        },
+        {
+          "type": "image",
+          "name": "Microsoft logo",
+          "url": "https://www.microsoft.com/logo.png"
+        }
+      ]
+    }
+  },
+  "quota": {
+    "status": 429,
+    "json": {
+      "statusCode": 429,
+      "error": {
+        "code": "INSUFFICIENT_FUNDS_CREDITS",
+        "message": "You have run out of credits",
+        "details": []
+      }
+    }
+  },
+  "rate_limited": {
+    "status": 429,
+    "json": {
+      "statusCode": 429,
+      "error": {
+        "code": "TOO_MANY_REQUESTS",
+        "message": "Too many requests",
+        "details": []
+      }
+    }
+  },
+  "no_result": {
+    "status": 400,
+    "json": {
+      "statusCode": 400,
+      "error": {
+        "code": "SEARCH_QUERY_NO_RESULT",
+        "message": "The query did not yield any result",
+        "details": []
+      }
+    }
+  },
+  "payment": {
+    "status": 402,
+    "json": {
+      "statusCode": 402,
+      "error": {
+        "code": "PAYMENT_REQUIRED",
+        "message": "Payment required",
+        "details": []
+      }
+    }
+  }
+}

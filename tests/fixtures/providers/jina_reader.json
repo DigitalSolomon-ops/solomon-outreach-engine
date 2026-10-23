@@ -1,0 +1,61 @@
+{
+  "source": "https://r.jina.ai/openapi.json (linked from https://r.jina.ai/docs and the github.com/jina-ai/reader README) ; https://jina.ai/reader/",
+  "note": "No literal example in the docs; built from the OpenAPI ReaderEnvelopeWrappedFormattedPageDto {code,status,data:FormattedPageDto,meta} and the error DTOs (InsufficientBalanceError 402/40203, RateLimitTriggeredError 429/42903). Field values are illustrative; the shape of data.links (object anchor->url) is not typed in the spec.",
+  "ok": {
+    "status": 200,
+    "json": {
+      "code": 200,
+      "status": 20000,
+      "data": {
+        "title": "Example Domain",
+        "description": "",
+        "url": "https://example.com/",
+        "content": "# Example Domain\n\nThis domain is for use in illustrative examples in documents.\n\n[More information...](https://www.iana.org/domains/example)\n\n[Contact](https://example.com/contact \"Contact us\")",
+        "links": {
+          "More information...": "https://www.iana.org/domains/example",
+          "About": "https://example.com/about"
+        },
+        "httpStatus": 200,
+        "httpStatusText": "OK"
+      },
+      "meta": {
+        "usage": {
+          "tokens": 42
+        }
+      }
+    }
+  },
+  "quota": {
+    "status": 402,
+    "json": {
+      "code": 402,
+      "status": 40203,
+      "message": "Account balance not enough to run this query, please recharge.",
+      "readableMessage": "InsufficientBalanceError: Account balance not enough to run this query, please recharge."
+    }
+  },
+  "rate_limited": {
+    "status": 429,
+    "json": {
+      "code": 429,
+      "status": 42903,
+      "retryAfter": 60,
+      "message": "Per IP rate limit exceeded",
+      "readableMessage": "RateLimitTriggeredError: Per IP rate limit exceeded"
+    }
+  },
+  "target_404": {
+    "status": 200,
+    "json": {
+      "code": 200,
+      "status": 20000,
+      "data": {
+        "title": "Not Found",
+        "url": "https://example.com/missing",
+        "content": "Not found",
+        "httpStatus": 404,
+        "httpStatusText": "Not Found"
+      }
+    }
+  }
+}

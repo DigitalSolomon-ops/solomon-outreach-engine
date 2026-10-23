@@ -1,0 +1,534 @@
+{
+  "id": "your-request-id",
+  "status": "Success",
+  "data": [
+    [
+      {
+        "query": "restaurants, Manhattan, NY, USA",
+        "name": "Upland",
+        "place_id": "ChIJWVD7FadZwokRs_pS6XY7VOU",
+        "google_id": "0x89c259a715fb5059:0xe5543b76e952fab3",
+        "full_address": "345 Park Ave S, New York, NY 10010",
+        "borough": "Manhattan",
+        "street": "345 Park Ave S",
+        "postal_code": "10010",
+        "area_service": false,
+        "country_code": "US",
+        "country": "United States of America",
+        "city": "New York",
+        "us_state": "New York",
+        "state": "New York",
+        "plus_code": null,
+        "latitude": 40.7419313,
+        "longitude": -73.984644,
+        "time_zone": "America/New_York",
+        "popular_times": null,
+        "site": "https://uplandnyc.com/?utm_source=Google+My+Business&utm_medium=Website+Button",
+        "phone": "+1 212-686-1006",
+        "type": "Californian restaurant",
+        "logo": "https://lh4.googleusercontent.com/-zvSnhN_Mek4/AAAAAAAAAAI/AAAAAAAAAAA/XHbA606mawk/s44-p-k-no-ns-nd/photo.jpg",
+        "description": "Spacious, casually chic brasserie with hearty dishes featuring Californian & Italian influences.",
+        "located_in": null,
+        "located_google_id": null,
+        "category": "Californian restaurant",
+        "subtypes": "Californian restaurant, American restaurant, Bar, Italian restaurant, Takeout Restaurant, Restaurant",
+        "posts": null,
+        "reviews_tags": null,
+        "rating": 4.5,
+        "reviews": 1766,
+        "photos_count": 4255,
+        "cid": "16524898314635901619",
+        "reviews_link": "https://search.google.com/local/reviews?placeid=ChIJWVD7FadZwokRs_pS6XY7VOU&q=restaurants,+Manhattan,+NY,+USA&authuser=0&hl=en&gl=US",
+        "reviews_id": "-1921845759073649997",
+        "photo": "https://lh5.googleusercontent.com/p/AF1QipPFzGn4Ie2huHtDmrAmxl0GkSIp5rrXipoxPF55=w800-h500-k-no",
+        "street_view": "https://lh5.googleusercontent.com/p/AF1QipPFzGn4Ie2huHtDmrAmxl0GkSIp5rrXipoxPF55=w1600-h1000-k-no",
+        "working_hours_old_format": "Monday: 11:30 AM-3 PM,5-10 PM | Tuesday: 11:30 AM-3 PM,5-10 PM | Wednesday: 11:30 AM-3 PM,5-10 PM | Thursday: 11:30 AM-3 PM,5-10 PM | Friday: 11:30 AM-3 PM,5-11 PM | Saturday: 10 AM-3 PM,5-11 PM | Sunday: 10 AM-3 PM,5-9 PM",
+        "working_hours": {
+          "Monday": "11:30 AM-3 PM,5-10 PM",
+          "Tuesday": "11:30 AM-3 PM,5-10 PM",
+          "Wednesday": "11:30 AM-3 PM,5-10 PM",
+          "Thursday": "11:30 AM-3 PM,5-10 PM",
+          "Friday": "11:30 AM-3 PM,5-11 PM",
+          "Saturday": "10 AM-3 PM,5-11 PM",
+          "Sunday": "10 AM-3 PM,5-9 PM"
+        },
+        "other_hours": [
+          {
+            "lunch": {
+              "Monday": "11:30 AM-3 PM",
+              "Tuesday": "11:30 AM-3 PM",
+              "Wednesday": "11:30 AM-3 PM",
+              "Thursday": "11:30 AM-3 PM",
+              "Friday": "11:30 AM-3 PM",
+              "Saturday": "Closed",
+              "Sunday": "Closed"
+            }
+          },
+          {
+            "dinner": {
+              "Monday": "5-10 PM",
+              "Tuesday": "5-10 PM",
+              "Wednesday": "5-10 PM",
+              "Thursday": "5-10 PM",
+              "Friday": "5-10 PM",
+              "Saturday": "5-10 PM",
+              "Sunday": "5-9 PM"
+            }
+          },
+          {
+            "delivery": {
+              "Monday": "11:30 AM-3:30 PM,5-10 PM",
+              "Tuesday": "11:30 AM-3:30 PM,5-10 PM",
+              "Wednesday": "11:30 AM-3:30 PM,5-10 PM",
+              "Thursday": "11:30 AM-3:30 PM,5-10 PM",
+              "Friday": "Closed",
+              "Saturday": "Closed",
+              "Sunday": "11 AM-3 PM,5-10 PM"
+            }
+          },
+          {
+            "takeout": {
+              "Monday": "11:30 AM-3:30 PM,5-10 PM",
+              "Tuesday": "11:30 AM-3:30 PM,5-10 PM",
+              "Wednesday": "11:30 AM-3:30 PM,5-10 PM",
+              "Thursday": "11:30 AM-3:30 PM,5-10 PM",
+              "Friday": "Closed",
+              "Saturday": "Closed",
+              "Sunday": "11 AM-3 PM,5-10 PM"
+            }
+          },
+          {
+            "brunch": {
+              "Monday": "Closed",
+              "Tuesday": "Closed",
+              "Wednesday": "Closed",
+              "Thursday": "Closed",
+              "Friday": "Closed",
+              "Saturday": "10 AM-3 PM",
+              "Sunday": "10 AM-3 PM"
+            }
+          }
+        ],
+        "business_status": "OPERATIONAL",
+        "about": {
+          "Service options": {
+            "Delivery": true,
+            "Takeout": true,
+            "Dine-in": true
+          },
+          "Highlights": {
+            "Great coffee": true,
+            "Great dessert": true,
+            "Great tea selection": true
+          },
+          "Popular for": {
+            "Lunch": true,
+            "Dinner": true,
+            "Solo dining": true
+          },
+          "Accessibility": {
+            "Wheelchair accessible entrance": true,
+            "Wheelchair accessible restroom": true,
+            "Wheelchair accessible seating": true,
+            "Wheelchair accessible parking lot": false
+          },
+          "Offerings": {
+            "Alcohol": true,
+            "Beer": true,
+            "Cocktails": true,
+            "Coffee": true,
+            "Comfort food": true,
+            "Hard liquor": true,
+            "Healthy options": true,
+            "Late-night food": true,
+            "Small plates": true,
+            "Vegetarian options": true,
+            "Wine": true
+          },
+          "Dining options": {
+            "Brunch": true,
+            "Lunch": true,
+            "Dinner": true,
+            "Dessert": true,
+            "Seating": true
+          },
+          "Amenities": {
+            "Bar onsite": true,
+            "High chairs": true,
+            "Restroom": true,
+            "Wi-Fi": true
+          },
+          "Atmosphere": {
+            "Romantic": true,
+            "Upscale": true
+          },
+          "Crowd": {
+            "Family-friendly": true,
+            "Groups": true,
+            "LGBTQ+ friendly": true,
+            "Tourists": true,
+            "Transgender safespace": true
+          },
+          "Planning": {
+            "Lunch reservations recommended": true,
+            "Dinner reservations recommended": true,
+            "Accepts reservations": true,
+            "Usually a wait": true
+          },
+          "Payments": {
+            "Debit cards": true,
+            "Credit cards": true
+          },
+          "Other": {
+            "LGBTQ+ friendly": true
+          }
+        },
+        "range": "$$$",
+        "reviews_per_score": {
+          "1": 50,
+          "2": 35,
+          "3": 113,
+          "4": 394,
+          "5": 1174
+        },
+        "reservation_links": [
+          "https://resy.com/cities/ny/upland",
+          "https://uplandnyc.com/?utm_source=Google%20My%20Business&utm_medium=Reservation%20Button"
+        ],
+        "booking_appointment_link": "https://resy.com/cities/ny/upland",
+        "menu_link": null,
+        "order_links": null,
+        "owner_id": "111762591187585073824",
+        "verified": true,
+        "owner_title": "Upland",
+        "owner_link": "https://www.google.com/maps/contrib/111762591187585073824",
+        "location_link": "https://www.google.com/maps/place/Upland/@40.7419313,-73.984644,14z/data=!4m8!1m2!2m1!1sUpland!3m4!1s0x89c259a715fb5059:0xe5543b76e952fab3!8m2!3d40.7419313!4d-73.984644"
+      },
+      {
+        "query": "restaurants, Manhattan, NY, USA",
+        "name": "Scarpetta",
+        "place_id": "ChIJt8W7n79ZwokRsyXs3QDbE3o",
+        "google_id": "0x89c259bf9fbbc5b7:0x7a13db00ddec25b3",
+        "full_address": "88 Madison Ave, New York, NY 10016",
+        "borough": "Manhattan",
+        "street": "88 Madison Ave",
+        "postal_code": "10016",
+        "area_service": false,
+        "country_code": "US",
+        "country": "United States of America",
+        "city": "New York",
+        "us_state": "New York",
+        "state": "New York",
+        "plus_code": null,
+        "latitude": 40.7445818,
+        "longitude": -73.9856202,
+        "time_zone": "America/New_York",
+        "popular_times": null,
+        "site": "https://www.scarpettarestaurants.com/location/scarpetta-new-york-city/",
+        "phone": "+1 212-691-0555",
+        "type": "Italian restaurant",
+        "logo": "https://lh3.googleusercontent.com/-PlU2AkPmFYA/AAAAAAAAAAI/AAAAAAAAAAA/Ecs5bmGchRU/s44-p-k-no-ns-nd/photo.jpg",
+        "description": "Handmade pastas headline a sophisticated Italian menu at this upscale locale with a cool vibe.",
+        "located_in": null,
+        "located_google_id": null,
+        "category": "restaurants",
+        "subtypes": "Italian restaurant, Bar, Cocktail bar, Meat dish restaurant, Restaurant, Seafood restaurant, Vegetarian restaurant, Wine bar",
+        "posts": null,
+        "reviews_tags": null,
+        "rating": 4.4,
+        "reviews": 1734,
+        "photos_count": 2511,
+        "cid": "8796615293954434483",
+        "reviews_link": "https://search.google.com/local/reviews?placeid=ChIJt8W7n79ZwokRsyXs3QDbE3o&q=restaurants,+Manhattan,+NY,+USA&authuser=0&hl=en&gl=US",
+        "reviews_id": "8796615293954434483",
+        "photo": "https://lh5.googleusercontent.com/p/AF1QipO1zbH5T9c9zf0OMsJP-8E5Ghwbm9cWlIo8ehqF=w800-h500-k-no",
+        "street_view": "https://lh5.googleusercontent.com/p/AF1QipO1zbH5T9c9zf0OMsJP-8E5Ghwbm9cWlIo8ehqF=w1600-h1000-k-no",
+        "working_hours_old_format": "Monday: 5:30-9:30 PM | Tuesday: 5:30-10 PM | Wednesday: 5:30-10 PM | Thursday: 5:30-11 PM | Friday: 5:30-11 PM | Saturday: 5-11 PM | Sunday: 5:30-9:30 PM",
+        "working_hours": {
+          "Monday": "5:30-9:30 PM",
+          "Tuesday": "5:30-10 PM",
+          "Wednesday": "5:30-10 PM",
+          "Thursday": "5:30-11 PM",
+          "Friday": "5:30-11 PM",
+          "Saturday": "5-11 PM",
+          "Sunday": "5:30-9:30 PM"
+        },
+        "other_hours": [
+          {
+            "lunch": {
+              "Monday": "11:30 AM-2:30 PM",
+              "Tuesday": "11:30 AM-2:30 PM",
+              "Wednesday": "11:30 AM-2:30 PM",
+              "Thursday": "11:30 AM-2:30 PM",
+              "Friday": "11:30 AM-2:30 PM",
+              "Saturday": "Closed",
+              "Sunday": "Closed"
+            }
+          },
+          {
+            "brunch": {
+              "Monday": "Closed",
+              "Tuesday": "Closed",
+              "Wednesday": "Closed",
+              "Thursday": "Closed",
+              "Friday": "Closed",
+              "Saturday": "Closed",
+              "Sunday": "11:30 AM-3 PM"
+            }
+          }
+        ],
+        "business_status": "OPERATIONAL",
+        "about": {
+          "Service options": {
+            "Outdoor seating": true,
+            "No-contact delivery": true,
+            "Delivery": true,
+            "Takeout": true,
+            "Dine-in": true
+          },
+          "Highlights": {
+            "Great coffee": true,
+            "Great dessert": true
+          },
+          "Popular for": {
+            "Lunch": true,
+            "Dinner": true,
+            "Solo dining": true
+          },
+          "Accessibility": {
+            "Wheelchair accessible elevator": true,
+            "Wheelchair accessible entrance": true,
+            "Wheelchair accessible restroom": true,
+            "Wheelchair accessible seating": true,
+            "Wheelchair accessible parking lot": false
+          },
+          "Offerings": {
+            "Alcohol": true,
+            "Beer": true,
+            "Cocktails": true,
+            "Coffee": true,
+            "Comfort food": true,
+            "Hard liquor": true,
+            "Late-night food": true,
+            "Small plates": true,
+            "Vegetarian options": true,
+            "Wine": true
+          },
+          "Dining options": {
+            "Brunch": true,
+            "Lunch": true,
+            "Dinner": true,
+            "Dessert": true,
+            "Seating": true
+          },
+          "Amenities": {
+            "Bar onsite": true,
+            "High chairs": true,
+            "Restroom": true,
+            "Wi-Fi": true
+          },
+          "Atmosphere": {
+            "Cozy": true,
+            "Romantic": true,
+            "Trending": true,
+            "Upscale": true
+          },
+          "Crowd": {
+            "Groups": true,
+            "Tourists": true
+          },
+          "Planning": {
+            "Lunch reservations recommended": true,
+            "Reservations required": true,
+            "Dinner reservations recommended": true,
+            "Accepts reservations": true,
+            "Usually a wait": true
+          },
+          "Payments": {
+            "Debit cards": true
+          }
+        },
+        "range": "$$$",
+        "reviews_per_score": {
+          "1": 78,
+          "2": 48,
+          "3": 105,
+          "4": 311,
+          "5": 1192
+        },
+        "reservation_links": [
+          "https://www.sevenrooms.com/reservations/scarpettanyc/"
+        ],
+        "booking_appointment_link": "https://www.sevenrooms.com/reservations/scarpettanyc/",
+        "menu_link": null,
+        "order_links": null,
+        "owner_id": "109938846905004437020",
+        "verified": true,
+        "owner_title": "Scarpetta",
+        "owner_link": "https://www.google.com/maps/contrib/109938846905004437020",
+        "location_link": "https://www.google.com/maps/place/Scarpetta/@40.7445818,-73.9856202,14z/data=!4m8!1m2!2m1!1sScarpetta!3m4!1s0x89c259bf9fbbc5b7:0x7a13db00ddec25b3!8m2!3d40.7445818!4d-73.9856202"
+      },
+      {
+        "query": "restaurants, Manhattan, NY, USA",
+        "name": "The Smith",
+        "place_id": "ChIJbd5El_VYwokRFEtA5j2r7Ls",
+        "google_id": "0x89c258f59744de6d:0xbbecab3de6404b14",
+        "full_address": "1900 Broadway, New York, NY 10023",
+        "borough": "Manhattan",
+        "street": "1900 Broadway",
+        "postal_code": "10023",
+        "area_service": false,
+        "country_code": "US",
+        "country": "United States of America",
+        "city": "New York",
+        "us_state": "New York",
+        "state": "New York",
+        "plus_code": null,
+        "latitude": 40.7716564,
+        "longitude": -73.98164009999999,
+        "time_zone": "America/New_York",
+        "popular_times": null,
+        "site": "https://thesmithrestaurant.com/",
+        "phone": "+1 212-496-5700",
+        "type": "American restaurant",
+        "logo": "https://lh4.googleusercontent.com/-fqfbzlCALtQ/AAAAAAAAAAI/AAAAAAAAAAA/5juorAHeJbk/s44-p-k-no-ns-nd/photo.jpg",
+        "description": "Lively place for classic American fare & specialty cocktails in spacious digs with a hopping bar.",
+        "located_in": null,
+        "located_google_id": null,
+        "category": "restaurants",
+        "subtypes": "American restaurant, Breakfast restaurant, Brunch restaurant, Oyster bar restaurant",
+        "posts": null,
+        "reviews_tags": null,
+        "rating": 4.4,
+        "reviews": 4077,
+        "photos_count": 3173,
+        "cid": "13541386461940566804",
+        "reviews_link": "https://search.google.com/local/reviews?placeid=ChIJbd5El_VYwokRFEtA5j2r7Ls&q=restaurants,+Manhattan,+NY,+USA&authuser=0&hl=en&gl=US",
+        "reviews_id": "-4905357611768984812",
+        "photo": "https://lh5.googleusercontent.com/p/AF1QipMso9TjAKjpXFNR917LF5Toz_WHj1I4MwsvUo7a=w800-h500-k-no",
+        "street_view": "https://lh5.googleusercontent.com/p/AF1QipMso9TjAKjpXFNR917LF5Toz_WHj1I4MwsvUo7a=w1600-h1000-k-no",
+        "working_hours_old_format": "Monday: 8 AM-11 PM | Tuesday: 8 AM-11 PM | Wednesday: 8 AM-11 PM | Thursday: 8 AM-11 PM | Friday: 8 AM-12 AM | Saturday: 9 AM-12 AM | Sunday: 9 AM-11 PM",
+        "working_hours": {
+          "Monday": "8 AM-11 PM",
+          "Tuesday": "8 AM-11 PM",
+          "Wednesday": "8 AM-11 PM",
+          "Thursday": "8 AM-11 PM",
+          "Friday": "8 AM-12 AM",
+          "Saturday": "9 AM-12 AM",
+          "Sunday": "9 AM-11 PM"
+        },
+        "other_hours": [
+          {
+            "brunch": {
+              "Monday": "Closed",
+              "Tuesday": "Closed",
+              "Wednesday": "Closed",
+              "Thursday": "Closed",
+              "Friday": "Closed",
+              "Saturday": "9 AM-4 PM",
+              "Sunday": "9 AM-4 PM"
+            }
+          }
+        ],
+        "business_status": "OPERATIONAL",
+        "about": {
+          "Service options": {
+            "Outdoor seating": true,
+            "Curbside pickup": true,
+            "Delivery": true,
+            "Takeout": true,
+            "Dine-in": true
+          },
+          "Highlights": {
+            "Fast service": true,
+            "Great cocktails": true,
+            "Great coffee": true,
+            "Great dessert": true
+          },
+          "Popular for": {
+            "Breakfast": true,
+            "Lunch": true,
+            "Dinner": true,
+            "Solo dining": true
+          },
+          "Accessibility": {
+            "Wheelchair accessible elevator": true,
+            "Wheelchair accessible entrance": true,
+            "Wheelchair accessible restroom": true,
+            "Wheelchair accessible seating": true
+          },
+          "Offerings": {
+            "Alcohol": true,
+            "Beer": true,
+            "Cocktails": true,
+            "Coffee": true,
+            "Comfort food": true,
+            "Happy hour drinks": true,
+            "Happy hour food": true,
+            "Hard liquor": true,
+            "Healthy options": true,
+            "Kids' menu": true,
+            "Late-night food": true,
+            "Organic dishes": true,
+            "Quick bite": true,
+            "Small plates": true,
+            "Wine": true
+          },
+          "Dining options": {
+            "Breakfast": true,
+            "Brunch": true,
+            "Lunch": true,
+            "Dinner": true,
+            "Dessert": true,
+            "Seating": true
+          },
+          "Amenities": {
+            "Bar onsite": true,
+            "Good for kids": true,
+            "High chairs": true,
+            "Restroom": true,
+            "Wi-Fi": true
+          },
+          "Atmosphere": {
+            "Casual": true,
+            "Cozy": true
+          },
+          "Crowd": {
+            "Family-friendly": true,
+            "Groups": true,
+            "Tourists": true
+          },
+          "Planning": {
+            "Lunch reservations recommended": true,
+            "Dinner reservations recommended": true,
+            "Accepts reservations": true,
+            "Usually a wait": true
+          },
+          "Payments": {
+            "NFC mobile payments": true
+          }
+        },
+        "range": "$$",
+        "reviews_per_score": {
+          "1": 102,
+          "2": 96,
+          "3": 327,
+          "4": 1253,
+          "5": 2299
+        },
+        "reservation_links": [
+          "https://thesmithrestaurant.com/location/lincoln-square/",
+          "https://www.opentable.com/restaurant/profile/98185?ref=1068"
+        ],
+        "booking_appointment_link": "https://thesmithrestaurant.com/location/lincoln-square/",
+        "menu_link": null,
+        "order_links": null,
+        "owner_id": "103162007826525695972",
+        "verified": true,
+        "owner_title": "The Smith",
+        "owner_link": "https://www.google.com/maps/contrib/103162007826525695972",
+        "location_link": "https://www.google.com/maps/place/The+Smith/@40.7716564,-73.98164009999999,14z/data=!4m8!1m2!2m1!1sThe+Smith!3m4!1s0x89c258f59744de6d:0xbbecab3de6404b14!8m2!3d40.7716564!4d-73.98164009999999"
+      }
+    ]
+  ]
+}

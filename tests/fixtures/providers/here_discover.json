@@ -1,0 +1,235 @@
+{
+  "_note": "geocode = HERE 'Geocode an area' docs example; discover = HERE 'Search for a place using a name' docs example (verbatim).",
+  "geocode": {
+    "items": [
+      {
+        "title": "Berlin, Deutschland",
+        "id": "here:cm:namedplace:20187403",
+        "resultType": "locality",
+        "localityType": "city",
+        "address": {
+          "label": "Berlin, Deutschland",
+          "countryCode": "DEU",
+          "countryName": "Deutschland",
+          "stateCode": "BE",
+          "state": "Berlin",
+          "countyCode": "B",
+          "county": "Berlin",
+          "city": "Berlin",
+          "postalCode": "10117"
+        },
+        "position": {
+          "lat": 52.51604,
+          "lng": 13.37691
+        },
+        "mapView": {
+          "west": 13.08835,
+          "south": 52.33812,
+          "east": 13.761,
+          "north": 52.6755
+        },
+        "scoring": {
+          "queryScore": 1,
+          "fieldScore": {
+            "city": 1
+          }
+        }
+      }
+    ]
+  },
+  "discover": {
+    "items": [
+      {
+        "title": "Statue of Liberty-New York Access",
+        "id": "here:pds:place:840dr5re-9f0b7cf123e84620a52771300e610edd",
+        "resultType": "place",
+        "address": {
+          "label": "Statue of Liberty-New York Access, 1 Battery Park, New York, NY 10004, United States",
+          "countryCode": "USA",
+          "countryName": "United States",
+          "stateCode": "NY",
+          "state": "New York",
+          "county": "New York",
+          "city": "New York",
+          "district": "Financial District",
+          "street": "Battery Park",
+          "postalCode": "10004",
+          "houseNumber": "1"
+        },
+        "position": {
+          "lat": 40.70267,
+          "lng": -74.01424
+        },
+        "access": [
+          {
+            "lat": 40.70269,
+            "lng": -74.01422
+          }
+        ],
+        "distance": 3438,
+        "categories": [
+          {
+            "id": "300-3000-0025",
+            "name": "Historical Monument",
+            "primary": true
+          },
+          {
+            "id": "300-3000-0023",
+            "name": "Tourist Attraction"
+          },
+          {
+            "id": "300-3100-0000",
+            "name": "Museum"
+          }
+        ],
+        "references": [
+          {
+            "supplier": {
+              "id": "core"
+            },
+            "id": "1217208922"
+          },
+          {
+            "supplier": {
+              "id": "core"
+            },
+            "id": "17260966"
+          },
+          {
+            "supplier": {
+              "id": "core"
+            },
+            "id": "17262185"
+          }
+        ],
+        "contacts": [
+          {
+            "phone": [
+              {
+                "value": "+12123633200"
+              }
+            ],
+            "www": [
+              {
+                "value": "http://www.statueoflibertytickets.com"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "title": "Statue of Liberty",
+        "id": "here:pds:place:840dr5r7-9df1349708914ceba912909970598cf7",
+        "resultType": "place",
+        "address": {
+          "label": "Statue of Liberty, New York, NY 10004, United States",
+          "countryCode": "USA",
+          "countryName": "United States",
+          "stateCode": "NY",
+          "state": "New York",
+          "county": "New York",
+          "city": "New York",
+          "district": "Liberty Island",
+          "postalCode": "10004"
+        },
+        "position": {
+          "lat": 40.68925,
+          "lng": -74.04445
+        },
+        "access": [
+          {
+            "lat": 40.68971,
+            "lng": -74.04357
+          }
+        ],
+        "distance": 6094,
+        "categories": [
+          {
+            "id": "300-3000-0025",
+            "name": "Historical Monument",
+            "primary": true
+          },
+          {
+            "id": "300-3000-0000",
+            "name": "Landmark-Attraction"
+          },
+          {
+            "id": "300-3000-0023",
+            "name": "Tourist Attraction"
+          },
+          {
+            "id": "300-3100-0000",
+            "name": "Museum"
+          }
+        ],
+        "references": [
+          {
+            "supplier": {
+              "id": "core"
+            },
+            "id": "1098463183"
+          },
+          {
+            "supplier": {
+              "id": "core"
+            },
+            "id": "1098463184"
+          },
+          {
+            "supplier": {
+              "id": "core"
+            },
+            "id": "1217206957"
+          },
+          {
+            "supplier": {
+              "id": "core"
+            },
+            "id": "17262184"
+          },
+          {
+            "supplier": {
+              "id": "core"
+            },
+            "id": "899132706"
+          },
+          {
+            "supplier": {
+              "id": "tripadvisor"
+            },
+            "id": "103887"
+          },
+          {
+            "supplier": {
+              "id": "yelp"
+            },
+            "id": "gnZXpLFzKzdBeQfFz1h-2g"
+          },
+          {
+            "supplier": {
+              "id": "yelp"
+            },
+            "id": "wB45aXh2cQlRWoKQzhWgeA"
+          }
+        ],
+        "contacts": [
+          {
+            "phone": [
+              {
+                "value": "+12123633200"
+              }
+            ],
+            "www": [
+              {
+                "value": "http://www.nps.gov/stli"
+              },
+              {
+                "value": "https://www.nps.gov"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+# Model ids and prices, from https://platform.claude.com/docs/en/about-claude/pricing
+# and https://platform.claude.com/docs/en/models/overview (docs.claude.com redirects there),
+# cross-checked against https://www.anthropic.com/pricing, read 2026-10-22. USD per million tokens.
+#
+# Base (standard, synchronous, global-routing) input/output prices only. Batch (50% off),
+# prompt caching (writes/reads), US-only inference_geo (1.1x) and tool surcharges are NOT used
+# by the engine and are deliberately not recorded here.
+#
+# Haiku 5.5 is priced by prompt length: the numbers below are for prompts up to 100,000
+# input tokens. Over 100,000 tokens a request pays $0.50 in / $2.50 out. The engine's prompts
+# are far below the threshold; if that ever changes, llm.py's cost estimate will read low.
+models:
+  haiku:  {id: claude-haiku-5-5, input_per_mtok: 0.10, output_per_mtok: 0.50}
+  sonnet: {id: claude-sonnet-5-5, input_per_mtok: 2.00, output_per_mtok: 10.00}
+source_urls:
+  - https://platform.claude.com/docs/en/about-claude/pricing
+  - https://platform.claude.com/docs/en/models/overview
+  - https://www.anthropic.com/pricing
+checked: 2026-10-22

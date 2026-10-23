@@ -1,0 +1,81 @@
+{
+  "_source": "https://hunter.io/api-documentation/v2#domain-search",
+  "_note": "Docs example verbatim with the docs' '...' elisions removed. 429 body built from the documented error envelope.",
+  "response": {
+    "data": {
+      "domain": "intercom.com",
+      "disposable": false,
+      "webmail": false,
+      "accept_all": true,
+      "pattern": "{first}",
+      "organization": "Intercom",
+      "linked_domains": [],
+      "emails": [
+        {
+          "value": "ciaran@intercom.com",
+          "type": "personal",
+          "provenance": "found",
+          "confidence": 92,
+          "sources": [
+            {
+              "domain": "github.com",
+              "uri": "http://github.com/ciaranlee",
+              "extracted_on": "2015-07-29",
+              "last_seen_on": "2017-07-01",
+              "still_on_page": true
+            },
+            {
+              "domain": "blog.intercom.com",
+              "uri": "http://blog.intercom.com/were-hiring-a-support-engineer/",
+              "extracted_on": "2015-08-29",
+              "last_seen_on": "2017-07-01",
+              "still_on_page": true
+            }
+          ],
+          "first_name": "Ciaran",
+          "last_name": "Lee",
+          "position": "Support Engineer",
+          "position_raw": "Support Engineer",
+          "seniority": "senior",
+          "department": "it",
+          "decision_maker": false,
+          "linkedin": null,
+          "twitter": "ciaran_lee",
+          "phone_number": null,
+          "verification": {
+            "date": "2019-12-06",
+            "status": "valid"
+          }
+        }
+      ]
+    },
+    "meta": {
+      "results": 35,
+      "results_approximate": false,
+      "limit": 10,
+      "offset": 0,
+      "params": {
+        "domain": "intercom.com",
+        "company": null,
+        "type": null,
+        "seniority": null,
+        "department": null,
+        "decision_maker": null
+      }
+    }
+  },
+  "errors": {
+    "usage_limit": {
+      "status": 429,
+      "body": {
+        "errors": [
+          {
+            "id": "too_many_requests",
+            "code": 429,
+            "details": "You have reached your usage limit."
+          }
+        ]
+      }
+    }
+  }
+}

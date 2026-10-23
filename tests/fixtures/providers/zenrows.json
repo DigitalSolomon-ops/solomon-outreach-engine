@@ -1,0 +1,40 @@
+{
+  "source": "https://docs.zenrows.com/api-reference/fetch/fetch-a-page.md ; https://docs.zenrows.com/api-error-codes.md",
+  "note": "'ok' body and the 402 problem+json body are the docs' own examples (OpenAPI fetchPage); one href and one script tag added so link/script handling is exercised. Target-404 body follows the documented Error schema with code RESP002.",
+  "ok": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "text/html",
+      "X-Request-Credits": "1",
+      "X-Request-Cost": "0.001"
+    },
+    "body": "<!doctype html>\n<html lang=\"en-US\">\n<head>\n<title>Ecommerce Test Site to Learn Web Scraping</title>\n</head>\n<body>\n<h1>Shop</h1>\n<a href=\"https://www.scrapingcourse.com/ecommerce/product/abominable-hoodie/\">Abominable Hoodie</a>\n<script src=\"/wp-includes/js/jquery.min.js\"></script>\n</body>\n</html>"
+  },
+  "quota": {
+    "status": 402,
+    "headers": {
+      "Content-Type": "application/problem+json"
+    },
+    "json": {
+      "code": "AUTH004",
+      "detail": "This account has used all its credits for the period. Upgrade or add credits to continue.",
+      "instance": "/v1",
+      "status": 402,
+      "title": "Usage exceeded (AUTH004)",
+      "type": "https://docs.zenrows.com/api-error-codes#AUTH004"
+    }
+  },
+  "target_404": {
+    "status": 404,
+    "headers": {
+      "Content-Type": "application/problem+json"
+    },
+    "json": {
+      "code": "RESP002",
+      "instance": "/v1",
+      "status": 404,
+      "title": "Page not found (RESP002)",
+      "type": "https://docs.zenrows.com/api-error-codes#RESP002"
+    }
+  }
+}

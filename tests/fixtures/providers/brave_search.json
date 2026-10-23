@@ -1,0 +1,87 @@
+{
+  "source": "https://api-dashboard.search.brave.com/api-reference/web/search/get/index.html.md ; https://api-dashboard.search.brave.com/documentation/guides/rate-limiting/index.html.md",
+  "note": "'ok' is the docs' own partial example (web-search get-started) merged with the reference schema. Error bodies follow the reference's documented 422/429 schema {type, error:{id,status,detail,meta,code}, time}; the code strings QUOTA_LIMITED / RATE_LIMITED are NOT on Brave's official pages (third-party source), and the 402 billing body is constructed: Brave documents no payment error shape.",
+  "ok": {
+    "status": 200,
+    "json": {
+      "type": "search",
+      "query": {
+        "original": "open source projects",
+        "more_results_available": true
+      },
+      "web": {
+        "type": "search",
+        "results": [
+          {
+            "title": "Python Web Frameworks",
+            "url": "https://example.com/python-frameworks",
+            "description": "Main snippet text...",
+            "extra_snippets": [
+              "First additional excerpt from the page..."
+            ]
+          }
+        ]
+      },
+      "locations": {
+        "results": [
+          {
+            "id": "1520066f3f39496780c5931d9f7b26a6",
+            "title": "Pangea Banquet Mediterranean Food"
+          }
+        ]
+      }
+    }
+  },
+  "quota": {
+    "status": 429,
+    "headers": {
+      "X-RateLimit-Limit": "1, 15000",
+      "X-RateLimit-Remaining": "1, 0",
+      "X-RateLimit-Reset": "1, 1419704"
+    },
+    "json": {
+      "type": "ErrorResponse",
+      "error": {
+        "id": "00000000-0000-0000-0000-000000000000",
+        "status": 429,
+        "code": "QUOTA_LIMITED",
+        "detail": "Monthly quota exceeded.",
+        "meta": {}
+      },
+      "time": 1729555200
+    }
+  },
+  "rate_limited": {
+    "status": 429,
+    "headers": {
+      "X-RateLimit-Limit": "1, 15000",
+      "X-RateLimit-Remaining": "0, 14523",
+      "X-RateLimit-Reset": "1, 1234567"
+    },
+    "json": {
+      "type": "ErrorResponse",
+      "error": {
+        "id": "00000000-0000-0000-0000-000000000001",
+        "status": 429,
+        "code": "RATE_LIMITED",
+        "detail": "Request rate limit exceeded for plan.",
+        "meta": {}
+      },
+      "time": 1729555200
+    }
+  },
+  "billing": {
+    "status": 402,
+    "json": {
+      "type": "ErrorResponse",
+      "error": {
+        "id": "00000000-0000-0000-0000-000000000002",
+        "status": 402,
+        "code": "PAYMENT_REQUIRED",
+        "detail": "Prepaid balance is $0. Add credits or enable auto-reload.",
+        "meta": {}
+      },
+      "time": 1729555200
+    }
+  }
+}

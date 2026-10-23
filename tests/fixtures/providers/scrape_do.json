@@ -1,0 +1,25 @@
+{
+  "source": "https://scrape.do/documentation/api-response/status-codes.md ; https://scrape.do/documentation/api-response/response-output.md ; https://scrape.do/documentation/request-costs.md",
+  "note": "Docs show no literal HTML response or error body for the main API; built from documented behaviour: body = target HTML, headers Scrape.do-Request-Cost / Scrape.do-Remaining-Credits / Scrape.do-Resolved-Url. 401 body text is the docs' status-table description (exact body shape undocumented).",
+  "ok": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "text/html",
+      "Scrape.do-Request-Cost": "1",
+      "Scrape.do-Remaining-Credits": "999",
+      "Scrape.do-Resolved-Url": "https://example.com/"
+    },
+    "body": "<!DOCTYPE html><html><head>\n    <title>Example Domain</title>\n    <meta charset=\"utf-8\">\n</head>\n<body>\n<div>\n    <h1>Example Domain</h1>\n    <p>This domain is for use in illustrative examples in documents. You may use this\n        domain in literature without prior coordination or asking for permission.</p>\n    <p><a href=\"https://www.iana.org/domains/example\">More information...</a></p>\n</div>\n</body></html>"
+  },
+  "quota": {
+    "status": 401,
+    "body": "You have no credits or your subscription has been suspended"
+  },
+  "target_404": {
+    "status": 404,
+    "headers": {
+      "Scrape.do-Request-Cost": "1"
+    },
+    "body": "<html><body>Not Found</body></html>"
+  }
+}

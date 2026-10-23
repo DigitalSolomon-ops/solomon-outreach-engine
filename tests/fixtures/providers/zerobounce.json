@@ -1,0 +1,36 @@
+{
+  "_source": "https://www.zerobounce.net/docs/email-validation-api-quickstart/v2-validate-emails",
+  "_note": "Docs example verbatim. Docs give no HTTP status for the error body (assumed 200 here).",
+  "response": {
+    "address": "john.doe@zerobounce.net",
+    "status": "valid",
+    "sub_status": "",
+    "free_email": false,
+    "catchall_domain": true,
+    "did_you_mean": null,
+    "account": "johndoe",
+    "domain": "zerobounce.net",
+    "domain_age_days": "3431",
+    "active_in_days": "30",
+    "active_first_seen": "2026-02-25",
+    "smtp_provider": "g-suite",
+    "mx_found": "true",
+    "mx_record": "aspmx.l.google.com",
+    "firstname": "dan",
+    "lastname": "cotet",
+    "gender": "male",
+    "country": null,
+    "region": null,
+    "city": null,
+    "zipcode": null,
+    "processed_at": "2026-06-18 07:05:00.033"
+  },
+  "errors": {
+    "out_of_credits": {
+      "status": 200,
+      "body": {
+        "error": "Invalid API Key or your account ran out of credits"
+      }
+    }
+  }
+}

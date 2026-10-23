@@ -1,0 +1,125 @@
+# Solomon Leadgen system defaults. Campaigns (ICP, offer, landing page, sequence)
+# live in Firestore (leadgen_campaigns) and are edited from The Creator's
+# Outreach page. Providers, allowances and rotation priority live in
+# config/capabilities.yaml; model ids and prices in config/models.yaml.
+# Secrets are never here: only Secret Manager names.
+
+gcp_project: your-gcp-project
+
+# ---------------------------------------------------------------------------
+# Rotation. Caps come from capabilities.yaml free allowances x free_cap_margin
+# (or x card_safety_ratio for card-on-file providers). Overrides convert units
+# where the plan is a $ credit, or name a provider-specific option.
+# ---------------------------------------------------------------------------
+rotation:
+  free_cap_margin: 0.95
+  overrides:
+    apify_maps:   {cap_units: 1500, unit: place, actor: compass~crawler-google-places}  # $5/mo credit
+    exa:          {cap_units: 700, unit: request}       # $10/mo credit
+    linkup:       {cap_units: 4000, unit: request}      # $20/mo credit at $0.005/search
+    brave_search: {cap_units: 1000, unit: request}      # $5/mo credit at $5/1k; x0.9 card safety
+    serpapi_maps: {cap_units: 250}
+    firecrawl:    {cap_units: 1000, plan_credits: 1000, check_usage: true}  # shared pool; the account is also used by other tools
+    nimble:       {cap_units: 5000}                     # one pool shared by search and scrape
+
+# Discovery preference for local businesses: maps first (they return the
+# business's own site and phone), web search as fallback.
+discovery:
+  prefer_kinds: [maps, web]
+  candidates_per_query: 10
+  queries_per_day: 6
+  new_leads_per_day: 40
+  exclude_domains: [yelp.com, angi.com, homeadvisor.com, bbb.org, facebook.com, instagram.com,
+                    linkedin.com, yellowpages.com, thumbtack.com, nextdoor.com, mapquest.com,
+                    google.com, healthgrades.com, zocdoc.com, avvo.com, findlaw.com, justia.com]
+  exclude_name_keywords: [franchise, corporate, headquarters]
+  recontact_after_days: 180
+
+# ---------------------------------------------------------------------------
+# Writing. Haiku writes, code validates, Haiku critiques, Sonnet rewrites a
+# failure once; then the pre-approved template ships (first touch) or the
+# follow-up is skipped. Auto-escalation only ever switches up.
+# ---------------------------------------------------------------------------
+writing:
+  max_words: 130
+  min_words: 40
+  reply_max_words: 120
+  escalate_after_first_touches: 150
+  escalate_positive_rate_below: 0.01     # default campaign target
+  escalate_critic_fail_window: 50
+  escalate_critic_fail_rate: 0.30
+
+# ---------------------------------------------------------------------------
+# Sequence default (campaigns can edit their own). Day offsets from the first
+# touch; a step landing on a weekend moves to the next business day.
+# ---------------------------------------------------------------------------
+sequence_default:
+  - {step: 0, day: 0,  angle: "First touch: the strongest true observation about their site and the offer."}
+  - {step: 1, day: 3,  angle: "Short bump with a new angle; two or three sentences."}
+  - {step: 2, day: 7,  angle: "Value angle: a different pillar or observation than the first touch."}
+  - {step: 3, day: 14, angle: "Polite close: last note, easy to say no, no pressure."}
+
+# ---------------------------------------------------------------------------
+# Sending and deliverability.
+# ---------------------------------------------------------------------------
+send:
+  postal_address: "Digital Solomon, 100 Example St., Anytown, NC 00000"
+  company: Digital Solomon
+  mailbox_secret_prefix: global-leadgen-mailbox-
+  warmup_start: 5
+  warmup_ramp_per_day: 2
+  warmup_max: 30
+  window_et: [9, 16]
+  weekdays_only: true
+  tick_minutes: 10
+  accept_verdicts: [ok]
+  mx_only_fallback: true          # accept mx_only only when every verifier is spent
+  mx_only_max_share: 0.20         # of a day's sends
+  test_batch_size: 10
+  test_evaluate_hours: 48
+  test_max_hard_bounces: 1
+  campaign_pause_bounce_rate: 0.03
+  campaign_pause_bounce_min: 20
+  campaign_pause_negative_rate: 0.05
+  campaign_pause_negative_min: 50
+  mailbox_retire_bounce_rate: 0.03
+  mailbox_retire_bounce_min: 20
+
+replies:
+  ai_reply_cap: 4
+  min_confidence: 0.7
+  ooo_pause_business_days: 5
+  not_now_days: 180
+  bcc: operator@example.com
+  ai_disclosure: "I'm an AI assistant that helps Marcus with email; he sees every reply."
+
+budget:
+  ai_monthly_cap_usd: 30
+  paid_providers_monthly_cap_usd: 0
+  reply_reserve_share: 0.20
+  notice_at: 0.80
+  replies_hard_stop: 1.20
+
+thompson:
+  floor_share: 0.05
+  floor_until_sends: 100
+  shift_notice_pp: 15
+
+scout:
+  max_discovery_units: 10
+
+unsubscribe:
+  service: solomon-leadgen-unsub
+  base_url: ""                    # blank = resolved from the deployed service (LEADGEN_UNSUB_URL)
+  hmac_secret: global-leadgen-hmac
+
+notify:
+  to: operator@example.com
+  smtp_secret: global-leadgen-notify-smtp   # optional; else the first healthy pool mailbox
+
+ghl:
+  enabled: false
+  secret: global-ghl-leadgen      # JSON: {"token": "<PIT>", "location_id": "..."}
+  tags: [leadgen]
+
+anthropic_secret: global-anthropic

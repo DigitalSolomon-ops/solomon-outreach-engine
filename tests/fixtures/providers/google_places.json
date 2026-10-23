@@ -1,0 +1,41 @@
+{
+  "places": [
+    {
+      "types": [
+        "vegetarian_restaurant",
+        "vegan_restaurant",
+        "chinese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "formattedAddress": "367 Pitt St, Sydney NSW 2000, Australia",
+      "websiteUri": "http://www.motherchusvegetarian.com.au/",
+      "displayName": {
+        "text": "Mother Chu's Vegetarian Kitchen",
+        "languageCode": "en"
+      }
+    },
+    {
+      "types": [
+        "vegan_restaurant",
+        "thai_restaurant",
+        "vegetarian_restaurant",
+        "indian_restaurant",
+        "italian_restaurant",
+        "american_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "formattedAddress": "175 First Ave, Five Dock NSW 2046, Australia",
+      "websiteUri": "http://www.veggosizzle.com.au/",
+      "displayName": {
+        "text": "Veggo Sizzle - Vegan & Vegetarian Restaurant, Five Dock, Sydney",
+        "languageCode": "en"
+      }
+    }
+  ]
+}

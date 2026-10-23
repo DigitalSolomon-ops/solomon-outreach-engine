@@ -1,0 +1,155 @@
+{
+  "_source": "https://docs.tomba.io/api/finder#domain-search",
+  "_note": "Docs 200 example and documented 402/429 example bodies, verbatim.",
+  "response": {
+    "data": {
+      "organization": {
+        "website_url": "stripe.com",
+        "organization": "Stripe",
+        "location": {
+          "country": "US",
+          "city": "South San Francisco",
+          "state": "California",
+          "street_address": "354 Oyster Point Blvd",
+          "postal_code": "94080"
+        },
+        "social_links": {
+          "twitter_url": "https://twitter.com/stripe",
+          "facebook_url": "https://www.facebook.com/StripeHQ",
+          "linkedin_url": "https://www.linkedin.com/company/stripe",
+          "instagram_url": null,
+          "github_url": "https://www.github.com/stripe",
+          "youtube_url": null,
+          "pinterest_url": null,
+          "tiktok_url": null
+        },
+        "disposable": false,
+        "webmail": false,
+        "phone_number": true,
+        "industries": "financial services",
+        "founded": "2010",
+        "company_size": "5K-10K",
+        "company_type": "private",
+        "revenue": "$1B-$10B",
+        "accept_all": false,
+        "description": "Stripe is a financial infrastructure platform for businesses.",
+        "pattern": "{first}.{last}",
+        "total_similar": 25,
+        "keywords": [
+          "payments",
+          "billing",
+          "fintech"
+        ],
+        "ranking": 310,
+        "whois": {
+          "registrar_name": "SafeNames Ltd.",
+          "created_date": "1995-09-12T04:00:00Z",
+          "referral_url": "http://www.safenames.net"
+        },
+        "last_updated": "2025-04-03T13:23:24+02:00"
+      },
+      "emails": [
+        {
+          "email": "jane.doe@stripe.com",
+          "first_name": "Jane",
+          "last_name": "Doe",
+          "full_name": "Jane Doe",
+          "gender": "female",
+          "phone_number": false,
+          "type": "personal",
+          "country": "US",
+          "position": "Software Engineer",
+          "department": "engineering",
+          "seniority": "senior",
+          "twitter": null,
+          "linkedin": "https://www.linkedin.com/in/jane-doe",
+          "score": 100,
+          "verification": {
+            "date": "2025-01-15T10:32:00+01:00",
+            "status": "valid"
+          },
+          "phone_data": [],
+          "sources": [
+            {
+              "uri": "https://stripe.com/blog/engineering",
+              "website_url": "stripe.com",
+              "extracted_on": "2024-06-01T09:14:07+01:00",
+              "last_seen_on": "2025-01-10T17:02:44+01:00",
+              "still_on_page": true
+            }
+          ]
+        },
+        {
+          "email": "john.smith@stripe.com",
+          "first_name": "John",
+          "last_name": "Smith",
+          "full_name": "John Smith",
+          "gender": "male",
+          "phone_number": false,
+          "type": "personal",
+          "country": "US",
+          "position": "Product Manager",
+          "department": "management",
+          "seniority": null,
+          "twitter": null,
+          "linkedin": null,
+          "score": 76,
+          "verification": {
+            "date": "2024-11-02T15:04:31+01:00",
+            "status": "accept_all"
+          },
+          "phone_data": [],
+          "sources": [
+            {
+              "uri": "https://stripe.com/newsroom",
+              "website_url": "stripe.com",
+              "extracted_on": "2024-05-15T08:00:00+01:00",
+              "last_seen_on": "2025-01-08T12:30:00+01:00",
+              "still_on_page": true
+            }
+          ]
+        }
+      ]
+    },
+    "meta": {
+      "total": 1250,
+      "pageSize": 10,
+      "current": 1,
+      "total_pages": 125,
+      "params": {
+        "domain": "stripe.com",
+        "company": "",
+        "page": 1,
+        "limit": 10,
+        "department": null,
+        "country": null,
+        "type": "all",
+        "live": false,
+        "enrich_mobile": false,
+        "webhook_url": null
+      }
+    }
+  },
+  "errors": {
+    "search_quota_exceeded": {
+      "status": 402,
+      "body": {
+        "errors": {
+          "type": "quota_exceeded",
+          "message": "Insufficient search quota for this request. Remaining: 0, Estimated cost: 1",
+          "code": 402
+        }
+      }
+    },
+    "rate_limit": {
+      "status": 429,
+      "body": {
+        "errors": {
+          "type": "rate_limit",
+          "message": "Rate limit exceeded (daily). Limit is 4000 requests. Retry after 32400 seconds.",
+          "code": 429
+        }
+      }
+    }
+  }
+}

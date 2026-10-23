@@ -1,0 +1,37 @@
+{
+  "localResults": [
+    {
+      "position": 1,
+      "title": "Trippy Buck Coffee",
+      "address": "720 Brazos St, Austin, TX 78701",
+      "website": "https://linktr.ee/TrippyBuckCoffee",
+      "rating": 4.9,
+      "reviews": 39,
+      "type": "Coffee shop",
+      "types": [
+        "Coffee shop",
+        "Breakfast restaurant",
+        "Brunch restaurant",
+        "Cafe",
+        "Espresso bar",
+        "Lunch restaurant",
+        "Restaurant",
+        "Wine bar"
+      ],
+      "price": "$1-10",
+      "gpsCoordinates": {
+        "latitude": 30.269416999999997,
+        "longitude": -97.7410702
+      },
+      "workingHours": {
+        "timezone": "America/Chicago",
+        "days": [
+          {"day": "Monday", "time": "8 AM-5 PM"},
+          {"day": "Tuesday", "time": "8 AM-5 PM"},
+          {"day": "Wednesday", "time": "8 AM-5 PM"}
+        ]
+      },
+      "placeId": "ChIJbz4l-kK1RIYRElA6U66oEQg"
+    }
+  ]
+}
