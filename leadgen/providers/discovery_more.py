@@ -64,7 +64,7 @@ class GooglePlaces:
     def __init__(self, key: str, **_):
         self.key = key
 
-    def search(self, query: str, geo: str, limit: int):
+    def search(self, query: str, geo: str, limit: int, _no_site: bool = False):
         with http_client() as c:
             resp = c.post(self.URL, headers={"X-Goog-Api-Key": self.key,
                                              "X-Goog-FieldMask": _GOOGLE_FIELDS},
@@ -73,17 +73,47 @@ class GooglePlaces:
         data = _google_check(resp)
         out = []
         for p in data.get("places") or []:
-            if p.get("businessStatus") == "CLOSED_PERMANENTLY" or not p.get("websiteUri"):
+            if p.get("businessStatus") == "CLOSED_PERMANENTLY" or bool(p.get("websiteUri")) == _no_site:
                 continue
             types = p.get("types") or []
             out.append(Candidate(
-                name=(p.get("displayName") or {}).get("text", ""), website=p["websiteUri"],
+                name=(p.get("displayName") or {}).get("text", ""), website=p.get("websiteUri", ""),
                 phone=p.get("nationalPhoneNumber", ""), address=p.get("formattedAddress", ""),
                 category=types[0] if types else "", source="google_places",
                 place_id=p.get("id", ""), rating=p.get("rating"),
                 review_count=p.get("userRatingCount"), categories=list(types),
                 hours=list((p.get("regularOpeningHours") or {}).get("weekdayDescriptions") or [])))
         return out, 1
+
+    def search_nosite(self, query: str, geo: str, limit: int):
+        """Only listings WITHOUT a website (the no-website pilot), keyed by Google listing id.
+
+        A limit over 20 reads further result pages (Text Search returns at most 60 in 3 pages,
+        1 request each): the first page is mostly established businesses with websites."""
+        if limit <= 20:
+            return self.search(query, geo, limit, _no_site=True)
+        out, units, token = [], 0, None
+        for _ in range(min(3, -(-int(limit) // 20))):
+            body = {"textQuery": f"{query} in {geo}" if geo else query, "pageSize": 20}
+            if token:
+                body["pageToken"] = token
+            with http_client() as c:
+                resp = c.post(self.URL, headers={"X-Goog-Api-Key": self.key,
+                                                 "X-Goog-FieldMask": _GOOGLE_FIELDS + ",nextPageToken"}, json=body)
+            data = _google_check(resp)
+            units += 1
+            for p in data.get("places") or []:
+                if p.get("businessStatus") == "CLOSED_PERMANENTLY" or p.get("websiteUri"):
+                    continue
+                types = p.get("types") or []
+                out.append(Candidate(
+                    name=(p.get("displayName") or {}).get("text", ""), website="", source="google_places",
+                    category=types[0] if types else "", place_id=p.get("id", ""), rating=p.get("rating"),
+                    review_count=p.get("userRatingCount"), categories=list(types)))
+            token = data.get("nextPageToken")
+            if not token:
+                break
+        return out, units
 
 
 # --------------------------------------------------------------------------- Outscraper
@@ -123,7 +153,7 @@ class OutscraperMaps:
     def __init__(self, key: str, **_):
         self.key = key
 
-    def search(self, query: str, geo: str, limit: int):
+    def search(self, query: str, geo: str, limit: int, _no_site: bool = False):
         with http_client(timeout=300) as c:
             resp = c.get(self.URL, headers={"X-API-KEY": self.key}, params={
                 "query": f"{query}, {geo}" if geo else query, "limit": int(limit),
@@ -132,18 +162,22 @@ class OutscraperMaps:
         places = [p for group in data.get("data") or [] for p in (group or [])]
         out = []
         for p in places:
-            if p.get("business_status") == "CLOSED_PERMANENTLY" or not p.get("site"):
+            if p.get("business_status") == "CLOSED_PERMANENTLY" or bool(p.get("site")) == _no_site:
                 continue
             subtypes = [s.strip() for s in (p.get("subtypes") or "").split(",") if s.strip()]
             wh = p.get("working_hours") or {}
             hours = [f"{d}: {t if isinstance(t, str) else ', '.join(t)}" for d, t in wh.items()] \
                 if isinstance(wh, dict) else []
             out.append(Candidate(
-                name=p.get("name", ""), website=p["site"], phone=p.get("phone") or "",
+                name=p.get("name", ""), website=p.get("site") or "", phone=p.get("phone") or "",
                 address=p.get("full_address") or "", category=p.get("type") or "",
-                source="outscraper_maps", rating=p.get("rating"), review_count=p.get("reviews"),
-                categories=subtypes, hours=hours))
+                source="outscraper_maps", place_id=p.get("place_id") or "", rating=p.get("rating"),
+                review_count=p.get("reviews"), categories=subtypes, hours=hours))
         return out, max(1, len(places))
+
+    def search_nosite(self, query: str, geo: str, limit: int):
+        """Only listings WITHOUT a website (the no-website pilot), keyed by Google listing id."""
+        return self.search(query, geo, limit, _no_site=True)
 
 
 # --------------------------------------------------------------------------- HasData
@@ -177,7 +211,7 @@ class HasDataMaps:
     def __init__(self, key: str, **_):
         self.key = key
 
-    def search(self, query: str, geo: str, limit: int):
+    def search(self, query: str, geo: str, limit: int, _no_site: bool = False):
         with http_client(timeout=300) as c:
             resp = c.get(self.URL, headers={"x-api-key": self.key},
                          params={"q": f"{query} {geo}".strip(), "hl": "en", "gl": "us"})
@@ -187,16 +221,20 @@ class HasDataMaps:
             results = [data["placeResults"]]
         out = []
         for r in (results or [])[:limit]:
-            if not r.get("website"):
+            if bool(r.get("website")) == _no_site:
                 continue
             days = (r.get("workingHours") or {}).get("days") or []
             out.append(Candidate(
-                name=r.get("title", ""), website=r["website"], phone=r.get("phone", ""),
+                name=r.get("title", ""), website=r.get("website", ""), phone=r.get("phone", ""),
                 address=r.get("address", ""), category=r.get("type", ""), source="hasdata_maps",
                 place_id=r.get("placeId", ""), rating=r.get("rating"),
                 review_count=r.get("reviews"), categories=list(r.get("types") or []),
                 hours=[f"{d.get('day')}: {d.get('time')}" for d in days if d.get("day")]))
         return out, self.CREDITS_PER_REQUEST
+
+    def search_nosite(self, query: str, geo: str, limit: int):
+        """Only listings WITHOUT a website (the no-website pilot), keyed by Google listing id."""
+        return self.search(query, geo, limit, _no_site=True)
 
 
 # --------------------------------------------------------------------------- Foursquare

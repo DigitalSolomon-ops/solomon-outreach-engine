@@ -55,6 +55,8 @@ MODEL_SCHEMA = {
             "properties": {"step": {"type": "integer", "minimum": 0}, "day": {"type": "integer", "minimum": 0},
                            "angle": {"type": "string"}}}},
         "risks": {"type": "array", "items": {"type": "string"}},
+        # the lead strategy id (config/strategies.yaml); validated against the live registry
+        "strategy": {"type": "string"},
         "recommended_connections": {"type": "array", "items": {
             "type": "object", "additionalProperties": False, "required": ["name", "why"],
             "properties": {"name": {"type": "string"}, "why": {"type": "string"}}}},
@@ -95,6 +97,11 @@ def validate_model_plan(plan: dict, registry: dict) -> list[str]:
             problems.append(f"recommended_connections: unknown provider {r['name']!r}")
         elif p["status"] == "skip" or not p.get("secret"):
             problems.append(f"recommended_connections: {r['name']} can't be connected with a key")
+    if "strategy" in plan:
+        from . import strategies
+        live = {s["id"] for s in strategies.live()}
+        if plan["strategy"] not in live:
+            problems.append(f"strategy: unknown strategy {plan['strategy']!r} (use one of {sorted(live)})")
     steps = [s["step"] for s in plan["sequence"]]
     if steps != list(range(len(steps))):
         problems.append("sequence steps must be numbered 0..n-1")
@@ -117,8 +124,10 @@ Rules:
 - sequence: 4 steps on days 0, 3, 7, 14 unless the description asks otherwise; give each a distinct angle.
 - risks: plain sentences.
 - recommended_connections: NOT CONNECTED providers worth adding, with why. Use only names from the lists.
+- strategy: the id of the ONE lead strategy (the lead signal) from the Strategies list that best fits who the operator
+  wants to reach. Use only an id from that list.
 - Do NOT output any numbers for volume, cost or time; the system computes those.
-Return JSON only with keys: icp_cells, offer, source_plan, sequence, risks, recommended_connections."""
+Return JSON only with keys: icp_cells, offer, source_plan, sequence, risks, recommended_connections, strategy."""
 
 
 class Strategist:
@@ -150,6 +159,10 @@ class Strategist:
             off = [p["name"] for p in self.inv["providers"] if not p["connected"] and cap in p["capabilities"]]
             lines.append(f"{cap}: CONNECTED {on or '(none)'}; NOT CONNECTED {off or '(none)'}")
         return "\n".join(lines)
+
+    def _strategies_text(self) -> str:
+        from . import strategies
+        return "\n".join(f"- {s['id']}: {s['description']}" for s in strategies.live())
 
     # ------------------------------------------------------------------ probe + sizing
     def probe(self, cells: list[dict], max_queries: int = 3, max_reads: int = 10) -> dict:
@@ -285,6 +298,7 @@ class Strategist:
             "Current ICP cells: " + (", ".join(f"{c['segment']} in {c['geo']}" for c in campaign["icp"]["cells"][:60]) or "(none)"),
             "Landing page text:\n" + (land["text"] or f"(could not read the landing page: {land.get('error')})"),
             "Providers:\n" + self._inventory_text(),
+            "Strategies (id: what it targets):\n" + self._strategies_text(),
         ])
         feedback, raw, problems = "", None, []
         for _ in range(2):
@@ -319,7 +333,7 @@ class Strategist:
         plan = {
             "at": utcnow().isoformat(), "model": "sonnet",
             "icp_cells": raw["icp_cells"], "offer": raw["offer"], "source_plan": raw["source_plan"],
-            "sequence": raw["sequence"], "risks": raw["risks"] + (
+            "sequence": raw["sequence"], "strategy": raw.get("strategy"), "risks": raw["risks"] + (
                 [f"The landing page could not be read: {land.get('error')}"] if not land["ok"] else []),
             "recommended_connections": recs, "landing": {"ok": land["ok"], "url": campaign["landing_url"]},
             "sizing": sizing, "probe": probe,
@@ -361,6 +375,33 @@ def apply_plan(campaign: dict, plan: dict) -> dict:
         c["sequence"] = [{"step": s["step"], "day": days.get(s["step"], s["day"]), "angle": s["angle"]}
                          for s in plan["sequence"]]
     c["plan"] = plan
+    return _apply_strategy(c, plan)
+
+
+def _apply_strategy(c: dict, plan: dict) -> dict:
+    """The strategist's strategy pick, unless the operator chose one in the dropdown (theirs
+    wins), the campaign is running, or the pick doesn't fit this campaign (e.g. it needs the
+    preview offer). A pick that isn't applied is kept on the plan as a note."""
+    from . import strategies
+    pick = plan.get("strategy")
+    if not pick:
+        return c
+    current = strategies.strategy_id(c)
+    why = None
+    if (c.get("icp") or {}).get("strategy_source") == "operator":
+        why = "the operator picked the strategy"
+    elif c.get("status", "draft") not in ("draft", "paused"):
+        why = "the strategy only changes while the campaign is a draft or paused"
+    elif pick != current:
+        icp = strategies.normalize_icp({**c["icp"], "strategy": pick, "strategy_params": {},
+                                        "site_filter": strategies.TO_SITE_FILTER.get(pick, "any")})
+        problems = strategies.validate_campaign({**c, "icp": icp})
+        if problems:
+            why = "; ".join(problems)
+        else:
+            c = {**c, "icp": {**icp, "strategy_source": "strategist"}}
+    if why and pick != current:
+        c["plan"] = {**c["plan"], "strategy_note": f"Suggested {pick}, kept {current}: {why}."}
     return c
 
 

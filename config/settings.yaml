@@ -5,6 +5,10 @@
 # Secrets are never here: only Secret Manager names.
 
 gcp_project: your-gcp-project
+# The Cloud Run job "Run preflight now" starts (deploy/deploy.ps1 creates it).
+job:
+  name: solomon-leadgen
+  region: us-central1
 
 # ---------------------------------------------------------------------------
 # Rotation. Caps come from capabilities.yaml free allowances x free_cap_margin
@@ -17,6 +21,9 @@ rotation:
     apify_maps:   {cap_units: 1500, unit: place, actor: compass~crawler-google-places}  # $5/mo credit
     exa:          {cap_units: 700, unit: request}       # $10/mo credit
     linkup:       {cap_units: 4000, unit: request}      # $20/mo credit at $0.005/search
+    linkup_answer: {cap_units: 4000, unit: request}     # same $20/mo pool as linkup
+    hasdata_indeed: {cap_units: 1000}
+    hasdata_reviews: {cap_units: 1000}
     brave_search: {cap_units: 1000, unit: request}      # $5/mo credit at $5/1k; x0.9 card safety
     serpapi_maps: {cap_units: 250}
     firecrawl:    {cap_units: 1000, plan_credits: 1000, check_usage: true}  # shared pool; the account is also used by other tools
@@ -121,5 +128,29 @@ ghl:
   enabled: false
   secret: global-ghl-leadgen      # JSON: {"token": "<PIT>", "location_id": "..."}
   tags: [leadgen]
+
+# Stop tags, set by the website funnel on the GHL contact. Read before EVERY send in every
+# campaign; a hit suppresses the address like an opt-out. GHL unreadable = the send is held.
+stop_tags:
+  # The brief's two tags plus the funnel's live pw-* lifecycle tags (ghl/state.json, 2026-10-23).
+  # pw-no-show / pw-no-purchase added by Marcus 2026-10-23: anyone the funnel has met stops.
+  tags: ["presence:booked", "presence:customer", "pw-booked", "pw-showed", "pw-no-show", "pw-no-purchase", "pw-paid",
+         "pw-questionnaire-complete", "pw-in-build", "pw-preview-sent", "pw-approved", "pw-launched",
+         "pw-maintenance", "pw-dunning", "pw-cancelled"]
+  # The funnel's own GHL key and Digital Solomon location (verified readable 2026-10-23).
+  token_secret: ghl-pit-token
+  location_secret: digitalsolomon-rebuild-msalmjdr-ghl-location
+  # Contact field PW Preview ID (the funnel writes the preview id there): any contact holding a lead's
+  # preview id and a stop tag stops that lead too. Field id from the funnel's ghl/state.json.
+  preview_id_field: Vn5VviGo11MDC4eGzIl1
+
+# Preview API, owned by the website funnel (pw-site-factory). Leadgen only calls it.
+previews:
+  base_url: https://pw-site-factory-projecthash-uc.a.run.app
+  key_secret: global-presence-previews-key
+  ready_timeout_minutes: 15      # from the yes; then held and Marcus is emailed, no Email 2
+  # HUMAN GATE. false = Email 2 is rendered and emailed to Marcus for review; the prospect gets nothing.
+  # Flip to true only after Marcus approves a sample and the checkout link is live (not buy.stripe.com/test_).
+  email2_live: false
 
 anthropic_secret: global-anthropic

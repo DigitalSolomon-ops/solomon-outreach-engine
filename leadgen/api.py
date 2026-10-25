@@ -13,12 +13,18 @@ from datetime import timedelta
 from fastapi import Body, FastAPI, HTTPException
 
 from . import campaigns as camp
+from . import industries as inds
+from . import strategies
 from .llm import BudgetStop
 from .prospect import Prospector
 from .store import utcnow
 from .strategist import PlanError, Strategist, apply_plan
 
 log = logging.getLogger(__name__)
+
+TARGET_LABEL = {"any": "any business with a website", "weak": "weak websites only",
+                "weak_or_none": "weak websites or no website",
+                "new_listing": "new businesses (no website, few reviews)"}
 
 
 def create_app(engine_factory) -> FastAPI:
@@ -83,36 +89,84 @@ def create_app(engine_factory) -> FastAPI:
         for c in sorted(e.ledger.campaigns(), key=lambda c: c.get("created_at", ""), reverse=True):
             out.append({k: c.get(k) for k in ("id", "name", "status", "landing_url", "created_at", "updated_at",
                                               "paused_reason", "private")} | {"cells": len(c["icp"]["cells"]),
-                                                                             "settings": c.get("settings")})
+                                                                             "settings": c.get("settings")}
+                       | _strategy_fields(c))
         return {"campaigns": out}
+
+    @app.get("/industries")
+    def industries():
+        return inds.public_list()
+
+    @app.get("/strategies")
+    def list_strategies():
+        """The live strategies: what the Strategy dropdown and the strategist offer."""
+        return {"strategies": strategies.public_list(), "default": strategies.DEFAULT}
 
     @app.post("/campaigns")
     def create(body: dict = Body(...)):
         e = eng()
         try:
+            sid = str(body.get("strategy") or strategies.DEFAULT)
+            s = strategies.entry(sid)
+            if s["status"] != "live":
+                raise camp.CampaignError(f"{s['label']} is still being built")
+            if s["uses_industry_list"]:
+                ind = inds.get(str(body["industry"])) if body.get("industry") else None
+                cells = inds.cells_for(ind) if ind else None
+            else:
+                # Segments come from the strategy's own data: the operator names the segment.
+                ind = None
+                segment = str(body.get("segment") or "").strip()
+                if not segment:
+                    raise camp.CampaignError(f"{s['label']} needs a segment name (what these leads are)")
+                geos = [str(g) for g in body.get("geos") or []] or inds.catalog()["default_geos"]
+                cells = [{"segment": segment, "geo": g, "query": segment} for g in geos]
             c = camp.new_campaign(e.settings, name=str(body.get("name", "")), description=str(body.get("description", "")),
                                   landing_url=str(body.get("landing_url", "")), booking_url=str(body.get("booking_url", "")),
                                   offer={"name": str(body.get("offer_name", "") or body.get("name", ""))},
-                                  private=bool(body.get("private")))
+                                  cells=cells, private=bool(body.get("private")))
+            if ind:
+                c["industry"] = ind["slug"]
+            if body.get("strategy"):
+                c["icp"] = strategies.normalize_icp({**c["icp"], "strategy": sid, "site_filter": strategies.TO_SITE_FILTER.get(sid, "any"),
+                                                     "strategy_params": dict(body.get("strategy_params") or {}),
+                                                     "strategy_source": "operator"})
             camp.validate(c)
-        except (camp.CampaignError, KeyError) as exc:
+        except (camp.CampaignError, inds.IndustryError, strategies.StrategyError, KeyError) as exc:
             bad(exc)
         e.ledger.save_campaign(c["id"], c)
         e.ledger.event("campaign_created", f"Campaign \"{c['name']}\" created as a draft.", campaign_id=c["id"])
-        return e.ledger.campaign(c["id"])
+        return strategies.view(e.ledger.campaign(c["id"]))
 
     @app.get("/campaigns/{cid}")
     def get_campaign(cid: str):
-        return get_c(eng(), cid)
+        return strategies.view(get_c(eng(), cid))
 
     @app.patch("/campaigns/{cid}")
     def patch(cid: str, body: dict = Body(...)):
         e = eng()
         c = get_c(e, cid)
+        icp_body = body.get("icp") if isinstance(body.get("icp"), dict) else {}
+        new_filter = icp_body.get("site_filter")
+        before = strategies.strategy_id(c)
+        asked = icp_body.get("strategy") or (strategies.FROM_SITE_FILTER.get(new_filter) if new_filter else None)
+        params_change = "strategy_params" in icp_body and icp_body["strategy_params"] != \
+            strategies.params(c, before) and (not asked or asked == before)
+        if ((asked and asked != before) or params_change) and c["status"] not in ("draft", "paused"):
+            # A campaign's audience doesn't change mid-run: the test batch and reply rates would
+            # stop meaning anything. Pause first.
+            raise HTTPException(409, "Who to target can only change while the campaign is a draft or paused. Pause it first.")
+        if asked:
+            body = {**body, "icp": {**icp_body, "strategy_source": "operator"}}
         try:
             nxt = camp.apply_patch(c, body)
-        except camp.CampaignError as exc:
+        except (camp.CampaignError, strategies.StrategyError) as exc:
             bad(exc)
+        after = strategies.strategy_id(nxt)
+        if after != before:
+            label = TARGET_LABEL.get(new_filter) if new_filter else None
+            e.ledger.event("site_filter", f"\"{c['name']}\" now targets: {label or strategies.entry(after)['label']}.",
+                           campaign_id=cid, why="Changed by the operator in the dashboard.")
         if "sequence" in body:
             nxt["sequence_edited"] = True
         e.ledger.save_campaign(cid, nxt)
@@ -120,7 +174,7 @@ def create_app(engine_factory) -> FastAPI:
             e.ledger.event("writer_tier", f"\"{c['name']}\" writer set to {body['settings']['writer_tier']} by the operator.",
                            campaign_id=cid, notify=True, why="Manual choice in the dashboard.",
                            cost_impact="Sonnet costs about 20x Haiku per email." if body["settings"]["writer_tier"] == "sonnet" else "Lower AI cost.")
-        return e.ledger.campaign(cid)
+        return strategies.view(e.ledger.campaign(cid))
 
     @app.post("/campaigns/{cid}/cells")
     def add_cell(cid: str, body: dict = Body(...)):
@@ -136,6 +190,64 @@ def create_app(engine_factory) -> FastAPI:
         e.ledger.save_campaign(cid, nxt)
         e.ledger.event("cell_added", f"Added {cell['segment']} in {cell['geo']} to \"{c['name']}\".", campaign_id=cid)
         return nxt
+
+    @app.post("/campaigns/{cid}/clone")
+    def clone(cid: str, body: dict = Body(...)):
+        """A new DRAFT for another industry: same offer, sequence, settings, towns and target;
+        the industry's own search term (and, for Website Launch, its pages, headline and FAQ)."""
+        e = eng()
+        src = get_c(e, cid)
+        if not strategies.entry(strategies.strategy_id(src))["uses_industry_list"]:
+            bad(camp.CampaignError("This campaign's segments come from its strategy's own data, not the "
+                                   "industries list, so it can't be cloned for an industry."))
+        try:
+            ind = inds.get(str(body.get("industry", "")))
+        except inds.IndustryError as exc:
+            bad(exc)
+        if (src.get("industry") or (src.get("preview") or {}).get("industry")) == ind["slug"]:
+            bad(camp.CampaignError("That's this campaign's industry already. Pick a different one."))
+        name = inds.clone_name(src, ind)
+        if any(x["name"] == name for x in e.ledger.campaigns()):
+            raise HTTPException(409, f"\"{name}\" already exists.")
+        geos = list(dict.fromkeys(x["geo"] for x in src["icp"]["cells"])) or None
+        try:
+            c = camp.new_campaign(e.settings, name=name, description=src.get("description", ""),
+                                  landing_url=src["landing_url"], booking_url=src.get("booking_url", ""),
+                                  offer=dict(src["offer"]), cells=inds.cells_for(ind, geos))
+            c["description"] = c["description"].replace(
+                (src["icp"]["cells"][0]["segment"].lower() if src["icp"]["cells"] else "\0"), ind["label"].lower())
+            c["industry"] = ind["slug"]
+            c["icp"] = {**src["icp"], "cells": c["icp"]["cells"]}
+            c["sequence"] = [dict(s) for s in src["sequence"]]
+            c["sequence_edited"] = bool(src.get("sequence_edited"))
+            c["settings"] = {**src["settings"]}
+            c["preview"] = dict(src.get("preview") or c["preview"])
+            if camp.offers_preview(src):
+                c.update(inds.website_launch_fields(ind, src))
+            c["cloned_from"] = src["id"]
+            camp.validate(c)
+        except (camp.CampaignError, inds.IndustryError) as exc:
+            bad(exc)
+        e.ledger.save_campaign(c["id"], c)
+        e.ledger.event("campaign_created", f"Campaign \"{c['name']}\" created as a draft (cloned from \"{src['name']}\").",
+                       campaign_id=c["id"])
+        return strategies.view(e.ledger.campaign(c["id"]))
+
+    @app.post("/campaigns/{cid}/preflight")
+    def preflight_now(cid: str):
+        """Run preflight now instead of on the next tick. Starts the job and returns at once."""
+        e = eng()
+        c = get_c(e, cid)
+        if c["status"] != "waiting":
+            bad(camp.CampaignError(f"Preflight runs for a launched campaign that is waiting; this one is {c['status']}."))
+        if e.preflight_in_flight(c):
+            raise HTTPException(409, "A preflight is already running for this campaign.")
+        try:
+            e.start_preflight_job(cid)
+        except Exception as exc:  # noqa: BLE001 - surface the reason; the tick still runs it later
+            log.warning("could not start preflight job for %s: %s", cid, exc)
+            raise HTTPException(502, f"Could not start preflight ({type(exc).__name__}). The next tick still runs it.")
+        return e.ledger.campaign(cid)
 
     @app.post("/campaigns/{cid}/plan")
     def plan(cid: str):
@@ -174,7 +286,8 @@ def create_app(engine_factory) -> FastAPI:
         e = eng()
         get_c(e, cid)
         try:
-            return e.launch(cid)
+            # Returns at once; the next tick (every 10 min, 8am-7pm ET) runs preflight.
+            return e.launch(cid, run_preflight=False)
         except camp.CampaignError as exc:
             bad(exc)
 
@@ -219,8 +332,18 @@ def create_app(engine_factory) -> FastAPI:
             funnel.append({"step": s["step"], "day": s["day"],
                            "sent": sum(1 for l in leads if s["step"] in (l.get("seq") or {}).get("sent_steps", []))})
         counts = {}
+        # Why leads didn't go forward, and what the site check saw (no lead-level data leaves here).
+        why = {"exclusion_reasons": {}, "site_checks": {}, "no_website_leads": 0, "text_only_reads": 0,
+               "weak_site_leads": 0}
         for l in leads:
             counts[l.get("status", "?")] = counts.get(l.get("status", "?"), 0) + 1
+            if l.get("reason"):
+                why["exclusion_reasons"][l["reason"]] = why["exclusion_reasons"].get(l["reason"], 0) + 1
+            for r in ((l.get("site_quality") or {}).get("reasons") or ["none_found"]) if l.get("site_quality") else []:
+                why["site_checks"][r] = why["site_checks"].get(r, 0) + 1
+            why["no_website_leads"] += 1 if l.get("nosite") else 0
+            why["weak_site_leads"] += 1 if (l.get("site_quality") or {}).get("weak") else 0
+            why["text_only_reads"] += 1 if l.get("status") == "site_unassessed" else 0
         threads = [t for _, t in e.ledger.s.where("threads", ("campaign_id", "==", cid))]
         replies = []
         for t in sorted(threads, key=lambda t: t.get("updated_at", ""), reverse=True)[:50]:
@@ -241,7 +364,7 @@ def create_app(engine_factory) -> FastAPI:
                 upcoming.append({"domain": l["domain"], "name": l.get("name"), "step": st, "due": seq.get("next_due"),
                                  "subject": d.get("subject"), "body": d.get("body"), "source": d.get("source")})
         upcoming.sort(key=lambda x: (x["due"] or "", x["step"]))
-        return {"campaign": c, "funnel": funnel, "lead_counts": counts,
+        return {"campaign": strategies.view(c), "funnel": funnel, "lead_counts": counts, "lead_outcomes": why,
                 "cells": [{"id": x["id"], "segment": x["segment"], "geo": x["geo"],
                            **((c.get("cells_state") or {}).get(x["id"]) or {"share": None, "sends": 0, "positive": 0})}
                           for x in c["icp"]["cells"]],
@@ -285,6 +408,12 @@ def create_app(engine_factory) -> FastAPI:
         return {"kill_switch": on}
 
     return app
+
+
+def _strategy_fields(c: dict) -> dict:
+    v = strategies.view(c)
+    return {"strategy": v["icp"]["strategy"], "strategy_label": v["strategy_label"],
+            "strategy_params": v["icp"]["strategy_params"]}
 
 
 def app_from_env() -> FastAPI:

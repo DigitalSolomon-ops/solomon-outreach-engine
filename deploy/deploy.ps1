@@ -49,7 +49,15 @@ $ProjectNumber = Out-G projects describe $Project --format "value(projectNumber)
 $ComputeSa = "$ProjectNumber-compute@developer.gserviceaccount.com"
 $Dedicated = "solomon-leadgen@$Project.iam.gserviceaccount.com"
 if (-not $RuntimeSa) {
-  if (Try-G iam service-accounts describe $Dedicated) { $RuntimeSa = $Dedicated }
+  # The dedicated account exists (2026-10-25) but holds no project roles yet; deploying as it
+  # left the unsubscribe service unable to read its signing key. Use it only once it can read secrets.
+  $policy = Out-G projects get-iam-policy $Project --flatten "bindings[].members" --filter "bindings.role:roles/secretmanager.secretAccessor" --format "value(bindings.members)"
+  $dedicatedReady = $policy -match [regex]::Escape("serviceAccount:$Dedicated")
+  if ((Try-G iam service-accounts describe $Dedicated) -and $dedicatedReady) { $RuntimeSa = $Dedicated }
+  elseif (Try-G iam service-accounts describe $Dedicated) {
+    $RuntimeSa = $ComputeSa
+    Write-Host "$Dedicated exists but has no Secret Manager access yet; using $ComputeSa." -ForegroundColor Yellow
+  }
   elseif (Try-G iam service-accounts create solomon-leadgen --display-name "Solomon Leadgen") { $RuntimeSa = $Dedicated }
   else {
     $RuntimeSa = $ComputeSa

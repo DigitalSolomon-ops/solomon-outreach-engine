@@ -9,6 +9,9 @@ Fixed tier rule, per email:
      again. Still failing: first touches ship the pre-approved template; a follow-up
      is skipped.
 
+Preview campaigns (preview.enabled) write without any link: Email 1 ends with PREVIEW_ASK word for
+word, follow-ups talk about the preview, and the message goes out as plain text only.
+
 Auto-escalation (campaign switches its writer from Haiku to Sonnet, never back by
 itself): after 150+ first-touch sends the positive-reply rate is under target, or
 more than 30% of the last 50 drafts failed the critic.
@@ -18,11 +21,13 @@ from __future__ import annotations
 import logging
 import re
 
+from . import strategies
 from .llm import STR, STRS, BudgetStop, LLMError, obj
 
 log = logging.getLogger(__name__)
 
 LINK_TOKEN = "{{campaign_link}}"
+PREVIEW_ASK = "Want to see the preview I built for you?"
 BANNED = ("guarantee", "risk-free", "risk free", "act now", "limited time", "urgent", "100%",
           "#1", "number one", "best in", "free money", "no obligation", "last chance",
           "don't miss", "dont miss", "skyrocket", "explode", "10x", "revolutionary",
@@ -48,6 +53,8 @@ def _words(body: str) -> int:
 def validate(draft: dict, campaign: dict, lead: dict, evidence: dict, step: int, *,
              max_words: int, min_words: int, first_subject: str | None = None) -> list[str]:
     """Validator v2. Pure code, free, and the last word on what can't be said."""
+    from .campaigns import offers_preview
+    preview = offers_preview(campaign)
     problems = []
     subject = (draft.get("subject") or "").strip()
     body = (draft.get("body") or "").strip()
@@ -68,7 +75,14 @@ def validate(draft: dict, campaign: dict, lead: dict, evidence: dict, step: int,
     words = _words(body)
     if not lo <= words <= max_words:
         problems.append(f"body length {words} words (allowed {lo}-{max_words})")
-    if body.count(LINK_TOKEN) != 1:
+    if preview:
+        if LINK_TOKEN in body:
+            problems.append("preview emails carry no link")
+        if step == 0 and PREVIEW_ASK not in body:
+            problems.append(f"Email 1 must ask exactly: {PREVIEW_ASK}")
+        if step > 0 and "preview" not in body.lower():
+            problems.append("follow-up must be about the preview")
+    elif body.count(LINK_TOKEN) != 1:
         problems.append("campaign link token must appear exactly once")
     if re.search(r"https?://|www\.|\b[a-z0-9-]+\.(?:com|net|org|io|co)\b", subject + " " + body.replace(LINK_TOKEN, ""), re.I):
         problems.append("extra link")
@@ -108,11 +122,27 @@ def validate(draft: dict, campaign: dict, lead: dict, evidence: dict, step: int,
             problems.append(f"greeting names someone not on the lead record ({who!r})")
     if owner and re.search(rf"\b{re.escape(owner)}\b", body) and "owner:first_name" not in used_ev:
         problems.append("uses the owner's name without citing owner:first_name")
-    if re.search(r"\b(review|rating|stars?)\b", body, re.I) and not any(k.startswith(("maps:", "review:")) for k in used_ev):
+    if re.search(r"\b(review|rating|stars?)\b", body, re.I) and not any(
+            k.startswith(("maps:", "review:")) or k == "fact:no_review_replies" for k in used_ev):
         problems.append("mentions reviews or ratings without citing them")
     if lead.get("referred_by") and step == 0 and "referr" not in body.lower() and "suggested" not in body.lower() \
             and "pointed me" not in body.lower():
         problems.append("referral lead: first email must mention the referral")
+    if lead.get("nosite") and _SAW_SITE.search(body):
+        problems.append("this business has no website: the email must not say it looked at their website")
+    # The lead's personal details come only from the facts the strategy that found it emits
+    # (every lead records its strategy; leads found before the registry carry none).
+    if lead.get("strategy") in strategies.load()["by_id"]:
+        strat = strategies.entry(lead["strategy"])
+        foreign = [k for k in used_ev if k.startswith("fact:") and not strategies.allows_fact(strat, k[5:])]
+        if foreign:
+            problems.append(f"cites facts the {strat['id']} strategy does not emit: {foreign}")
+        if not strat["cites_site_record"]:
+            extra = [k for k in used_ev if not k.startswith("fact:") and k not in strategies.ALWAYS_CITABLE]
+            if extra:
+                problems.append(f"the {strat['id']} strategy may cite only its facts, not {extra}")
+    if strategies.strategy_id(campaign) == "new_business" and _JUST_OPENED.search(subject + " " + body):
+        problems.append("new-business emails must not say or imply the business just opened")
     return problems
 
 
@@ -122,7 +152,7 @@ This is step {step_no} of {steps} in a sequence. Angle for this step: {angle}
 Rules you must follow exactly:
 - Use ONLY the offer facts and the EVIDENCE entries given. No other claims, numbers, statistics, prices, client names or results.
 - Speak about their website only as what "I" saw or did not see. Never say the business is losing money or customers.
-- Put the exact token {{{{campaign_link}}}} once where the link goes. No other links, URLs or domain names.
+- {link_rule}
 - No hype, no urgency, no flattery, no exclamation marks, no em or en dashes, no pressure.
 - {subject_rule}
 - Body: {min_words} to {max_words} words. Greet with "Hi" and {greeting}. End with the sender's first name only.
@@ -140,8 +170,21 @@ Fail the email if ANY of these is true:
 - it fabricates personalization (names, details, history) that is not in the EVIDENCE;
 - it implies a prior relationship or conversation that did not happen.
 Return JSON only: {"pass": true|false, "issues": ["short reason", ...]}"""
+# The validator forces Email 1 of a preview campaign to carry PREVIEW_ASK word for word, and the
+# critic kept failing every draft on it (Roofers preflight 0/5, 2026-10-24). The operator approved
+# the line as written, so the critic is told not to judge it.
+CRITIC_PREVIEW_NOTE = (f"\nThis campaign's first email must contain the fixed line \"{PREVIEW_ASK}\". The operator "
+                       "approved that line word for word. Do not fail the email for that line or for what it says "
+                       "about a preview, even where the brief or offer facts word the preview differently. "
+                       "Judge everything else as usual.")
 
 REWRITE_EXTRA = "Your job: rewrite a draft that was REJECTED for: {problems}. Fix every problem."
+NOSITE_EXTRA = ("- This business has NO website. Never say you looked at, visited or saw their website. "
+                "Say only that you searched for them and could not find a site (evidence fact:nosite).")
+_JUST_OPENED = re.compile(r"\b(?:just|recently|newly) (?:opened|launched|started)\b|\bnew business\b|"
+                          r"\bgrand opening\b|\bopened your doors\b|\bcongrat\w*", re.I)
+_SAW_SITE = re.compile(r"\b(?:on|at|visit\w*|saw|seen|look\w* (?:at|over|through)|spent [^.]{0,30} on) "
+                       r"(?:your|their|the) (?:web ?site|site|home ?page)\b", re.I)
 
 
 def _greeting(lead: dict) -> str:
@@ -166,22 +209,59 @@ def _user_prompt(campaign: dict, lead: dict, evidence: dict, brief: dict, thread
     return "\n".join(lines)
 
 
+LINK_RULE = "Put the exact token {{campaign_link}} once where the link goes. No other links, URLs or domain names."
+PREVIEW_RULE = ("No links, URLs, domain names or tokens at all; this email is plain text. "
+                "Step 1 must end, just before your first name, with exactly this question on its own line: "
+                f"\"{PREVIEW_ASK}\" Later steps refer back to that preview and ask again in your own words.")
+
+
 def template_first_touch(campaign: dict, lead: dict, evidence: dict) -> dict:
     """The fixed fallback. Every sentence is pre-approved and passes the validator."""
+    from .campaigns import offers_preview
+    if offers_preview(campaign):
+        return template_preview_touch(campaign, lead, evidence)
     order = ["fact:after_hours", "fact:no_chat", "fact:no_booking", "fact:no_form", "fact:no_schema"]
+    # a strategy's own signal (fmcsa_registered, hiring, ...) when no site observation is there
+    if not strategies.entry(strategies.strategy_id(campaign))["cites_site_record"]:
+        order += sorted(k for k in evidence if k.startswith("fact:") and k not in order)
     key = next((k for k in order if k in evidence), None)
     first = campaign["offer"].get("sender_name", "Marcus").split()[0]
     observation = f"{evidence[key]} " if key else ""
     fact = campaign["offer"]["facts"][0] if campaign["offer"]["facts"] else ""
     seg = (lead.get("segment") or "local").lower()
     city = (lead.get("geo") or "").split(",")[0] or "your area"
+    looked = ("I came across your business" if lead.get("nosite") or not lead.get("website")
+              else "I took a look at your website")
     body = (f"Hi {lead['name']},\n\n"
-            f"I took a look at your website while researching {seg} businesses around {city}. "
+            f"{looked} while researching {seg} businesses around {city}. "
             f"{observation}\n\nThat is the kind of thing the {campaign['offer']['name']} looks at. {fact}\n\n"
             f"If it's useful, here it is: {LINK_TOKEN}\n\n{first}")
-    return {"subject": f"A quick look at {lead['name'][:40]}'s website", "body": body,
+    subject = (f"A quick look at {lead['name'][:40]}'s website" if looked.endswith("website")
+               else f"A quick note for {lead['name'][:40]}")
+    return {"subject": subject, "body": body,
             "facts_used": ["offer_1"] if fact else [], "evidence_used": [key] if key else [],
             "source": "template"}
+
+
+def template_preview_touch(campaign: dict, lead: dict, evidence: dict) -> dict:
+    """Preview fallback: one observation about their site, then the ask. No link, no price."""
+    order = ["fact:nosite", "fact:weak_broken", "fact:weak_parked", "fact:weak_not_mobile",
+             "fact:weak_not_secure", "fact:weak_old_copyright", "fact:weak_flash", "fact:weak_old_markup",
+             "fact:no_booking", "fact:no_form"]
+    if not strategies.entry(strategies.strategy_id(campaign))["cites_site_record"]:
+        order += sorted(k for k in evidence if k.startswith("fact:") and k not in order)
+    key = next((k for k in order if k in evidence), None)
+    first = campaign["offer"].get("sender_name", "Marcus").split()[0]
+    seg = (lead.get("segment") or "local").lower()
+    city = (lead.get("geo") or "").split(",")[0] or "your area"
+    observation = f"{evidence[key]} " if key else ""
+    looked = ("" if lead.get("nosite") else " and spent a few minutes on your website")
+    body = (f"Hi {lead['name']},\n\n"
+            f"I was looking at {seg} businesses around {city}{looked}. "
+            f"{observation}\n\nSo I put together a preview of what a new site for {lead['name']} could look like.\n\n"
+            f"{PREVIEW_ASK}\n\n{first}")
+    return {"subject": f"A new website for {lead['name'][:40]}", "body": body, "facts_used": [],
+            "evidence_used": [key] if key else [], "source": "template"}
 
 
 class Writer:
@@ -192,6 +272,7 @@ class Writer:
 
     def _model_draft(self, tier: str, campaign: dict, lead: dict, evidence: dict, brief: dict,
                      step: int, thread: list[dict], first_subject: str | None, problems=None) -> dict:
+        from .campaigns import offers_preview
         seq = campaign["sequence"]
         angle = next((s["angle"] for s in seq if s["step"] == step), "")
         system = WRITER_SYSTEM.format(
@@ -203,7 +284,10 @@ class Writer:
             min_words=self.cfg["min_words"] if step == 0 else 15,
             max_words=self.cfg["max_words"] - 10 if step == 0 else 80,
             greeting=_greeting(lead),
-            extra=REWRITE_EXTRA.format(problems="; ".join(problems)) if problems else "")
+            link_rule=PREVIEW_RULE if offers_preview(campaign) else LINK_RULE,
+            extra="\n".join(x for x in (NOSITE_EXTRA if lead.get("nosite") else "",
+                                        strategies.for_campaign(campaign).writer_rule,
+                                        REWRITE_EXTRA.format(problems="; ".join(problems)) if problems else "") if x))
         user = _user_prompt(campaign, lead, evidence, brief, thread)
         purpose = "rewrite" if problems else ("first_touch" if step == 0 else "follow_up")
         draft = self.llm.json(tier, system, user, purpose=purpose, campaign_id=campaign["id"],
@@ -213,10 +297,12 @@ class Writer:
         return draft
 
     def critic(self, campaign: dict, draft: dict, evidence: dict, brief: dict) -> dict:
-        user = "\n".join([f"Subject: {draft['subject']}", draft["body"], "", "Offer facts:",
+        from .campaigns import offers_preview
+        system = CRITIC_SYSTEM + (CRITIC_PREVIEW_NOTE if offers_preview(campaign) else "")
+        user ="\n".join([f"Subject: {draft['subject']}", draft["body"], "", "Offer facts:",
                           *[f"- {f}" for f in campaign["offer"]["facts"]], "EVIDENCE:",
                           *[f"- {k}: {v}" for k, v in evidence.items()], "Brief: " + str(brief)])
-        out = self.llm.json("haiku", CRITIC_SYSTEM, user, purpose="critic",
+        out = self.llm.json("haiku", system, user, purpose="critic",
                             campaign_id=campaign["id"], max_tokens=1000, schema=CRITIC_SCHEMA)
         return {"pass": out.get("pass") is True, "issues": [str(i)[:200] for i in out.get("issues") or []]}
 

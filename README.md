@@ -22,6 +22,7 @@ Cloud Scheduler (America/New_York)
 
 | Piece | What it is |
 |---|---|
+| `leadgen/strategies/`, `config/strategies.yaml` | The lead signal a campaign targets, as a pluggable registry: one module per strategy behind one interface (find candidates, keep or drop each with a reason, emit cited facts). 11 ship on free data: any site, weak site, weak or no site, new businesses with no website, newly registered FMCSA carriers, new SAM.gov registrants, low-rated businesses that don't reply to reviews, businesses hiring now, no online booking, businesses an AI search answer doesn't name, and domains or SSL certificates about to expire. The writer may cite only the facts the lead's own strategy emits. `python -m leadgen strategy-probe <id>` measures a strategy's find rate live without a campaign or a send. |
 | `leadgen/strategist.py` | Turns a description + landing page + key inventory into one schema-validated plan. Every number in it (reachable leads, cost, days to full volume) is computed by code from Census business counts and a small live probe, never by the model. |
 | `leadgen/rotation.py`, `capabilities.py` | 30+ provider adapters behind one rotation. Recurring free allowances first, one-time credits as reserve, card-on-file providers stopped at 90% of free, shared accounts checked against the provider's own usage figure. Paid spend is fixed at $0. |
 | `leadgen/enrich.py` | Site observations, tech stack, owner name (only when the site states it, with the source sentence kept), and a lead brief in which every claim must cite an evidence key. |
@@ -56,6 +57,6 @@ The suite is offline: providers, Claude, SMTP, IMAP and DNS are faked. It covers
 
 ## Run it against a real project
 
-Configuration is in `config/`: `settings.yaml` (system defaults, including the postal address used in the compliance footer), `capabilities.yaml` (the provider registry and free allowances) and `models.yaml` (model IDs and prices). Replace the placeholders, create the secrets you have keys for, and deploy with `deploy/deploy.ps1`. `python -m leadgen --help` lists the entrypoints (`health`, `prospect`, `tick`, `serve-api`, `serve`, `loopback`).
+Configuration is in `config/`: `settings.yaml` (system defaults, including the postal address used in the compliance footer), `capabilities.yaml` (the provider registry and free allowances) and `models.yaml` (model IDs and prices). Replace the placeholders, create the secrets you have keys for, and deploy with `deploy/deploy.ps1`. `python -m leadgen --help` lists the entrypoints (`health`, `prospect`, `tick`, `serve-api`, `serve`, `loopback`, `strategy-probe`).
 
 See [VERIFICATION.md](VERIFICATION.md) for how the live system was verified.

@@ -18,7 +18,10 @@ from .config import ROOT
 from .store import utcnow
 
 CAPABILITIES = ("discover_maps", "discover_web", "scrape", "verify_email", "enrich_people",
-                "enrich_tech", "enrich_reviews", "market_size", "write")
+                "enrich_tech", "enrich_reviews", "market_size", "write",
+                # lead-strategy signal sources (config/strategies.yaml)
+                "discover_carriers", "discover_registrants", "discover_jobs", "review_replies",
+                "ai_answer", "domain_expiry")
 PERIODS = ("month", "day", "once", "unknown", "unlimited")
 
 SCHEMA = {
@@ -73,11 +76,23 @@ STAGE_CAPS = {
     "people": ("enrich_people",),
     "sizing": ("market_size",),
 }
+# Lead-strategy signal stages (leadgen/providers/signals.py). Built on demand by Engine.signal().
+SIGNAL_CAPS = {
+    "carriers": ("discover_carriers",),
+    "registrants": ("discover_registrants",),
+    "jobs": ("discover_jobs",),
+    "reviews": ("review_replies",),
+    "answer": ("ai_answer",),
+    "domains": ("domain_expiry",),
+}
 # Registry name -> adapter key, where one provider has adapters in two stages.
 ADAPTER_KEYS = {("verify", "getprospect"): "getprospect_verify",
                 ("verify", "anymailfinder"): "anymailfinder_verify"}
 # Providers that draw on one allowance from more than one stage.
-POOLS = {"hunter_verify": "hunter", "hunter_domain": "hunter"}
+POOLS = {"hunter_verify": "hunter", "hunter_domain": "hunter",
+         # one HasData credit balance, one Linkup credit balance
+         "hasdata_indeed": "hasdata_maps", "hasdata_reviews": "hasdata_maps", "linkup_answer": "linkup",
+         "tavily_answer": "tavily"}
 
 
 class RegistryError(ValueError):
@@ -183,7 +198,7 @@ def rotation_entries(reg: dict, inv: dict, stage: str, adapters: dict, overrides
         if not r["connected"]:
             continue
         p = by_name[r["name"]]
-        if not set(p.get("capabilities", [])) & set(STAGE_CAPS[stage]):
+        if not set(p.get("capabilities", [])) & set({**STAGE_CAPS, **SIGNAL_CAPS}[stage]):
             continue
         key = ADAPTER_KEYS.get((stage, p["name"]), p["name"])
         if key not in adapters:

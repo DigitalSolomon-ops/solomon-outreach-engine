@@ -1,0 +1,101 @@
+# The fixed industry list for campaign builds (Outreach > New campaign and "Clone for another
+# industry"). One industry per campaign. Website Launch fields come from the funnel's
+# industries/*.json (headline and the first FAQs) as they stood on 2026-10-24; the funnel has a
+# preview template for every slug here. To add an industry, add it to the funnel first, then here.
+default_geos: ["Gastonia, NC", "Charlotte, NC", "Concord, NC", "Huntersville, NC", "Rock Hill, SC", "Monroe, NC"]
+area_label: Gaston/Charlotte
+website_launch:
+  landing_url: "https://digitalsolomon.com/presence/websites/{slug}"
+  booking_url: "https://api.digitalsolomon.com/widget/booking/B1TJ1xNheVMPH4iE3tqH?pw_industry={slug}"
+
+industries:
+  - slug: roofing
+    label: Roofers
+    query: roofing contractor
+    h1: A roofing website that books inspections.
+    faq:
+      - q: Can the site show my insurance-claim experience?
+        a: Yes. We build a page that explains how you work with insurance claims, in your words, so homeowners know what to expect before they call.
+      - q: Can I show before and after photos?
+        a: Yes. Send them in the questionnaire and we lay them out by type of job.
+  - slug: hvac
+    label: HVAC companies
+    query: HVAC contractor
+    h1: An HVAC website that fills your schedule.
+    faq:
+      - q: Can the site promote my maintenance plan?
+        a: Yes. It gets its own page and a spot on the home page, with what is included and how to sign up.
+      - q: Can I list emergency service?
+        a: Yes. If you offer it, the site says so clearly, with your hours and a tap-to-call button.
+  - slug: plumbing
+    label: Plumbers
+    query: plumber
+    h1: A plumbing website that rings your phone.
+    faq:
+      - q: Can my phone number be on every page?
+        a: Yes. A tap-to-call button stays in reach on every page on a phone.
+      - q: Can I show upfront pricing?
+        a: If you want to, yes. The questionnaire asks which services you want to show prices for.
+  - slug: electrician
+    label: Electricians
+    query: electrician
+    h1: An electrician website that brings in the right jobs.
+    faq:
+      - q: Can my license number be on the site?
+        a: Yes. We show it in the footer of every page and on the about page.
+      - q: Can I focus the site on bigger jobs?
+        a: Yes. Tell us which jobs you want more of and they get the most space.
+  - slug: home-remodeling
+    label: Remodelers
+    query: home remodeling contractor
+    h1: A remodeling website that earns the consultation.
+    faq:
+      - q: Can the site show my process step by step?
+        a: Yes. A process page walks homeowners from the first visit to the final walkthrough, in your words.
+      - q: Can I set a minimum project size?
+        a: Yes. The site can say where your projects usually start, so you get fewer calls that are not a fit.
+  - slug: landscaping
+    label: Landscapers
+    query: landscaping company
+    h1: A landscaping website that shows your work.
+    faq:
+      - q: Can the site have a photo gallery?
+        a: Yes. Upload your photos in the questionnaire and we arrange them by type of job.
+      - q: Can people request an estimate for their yard?
+        a: Yes. The estimate form asks for the address and a short description, and photos can follow by email.
+  - slug: pressure-washing
+    label: Pressure washing companies
+    query: pressure washing service
+    h1: A pressure washing website that wins quotes.
+    faq:
+      - q: Can the site explain soft washing?
+        a: Yes. A short page explains when you use soft washing and why, so homeowners trust the method.
+      - q: Can the quote form ask for the address?
+        a: Yes. The form asks for the address and what needs cleaning, so you can quote faster.
+  - slug: cleaning
+    label: Cleaning companies
+    query: house cleaning service
+    h1: A cleaning website that books regular clients.
+    faq:
+      - q: Can the site show starting prices?
+        a: Yes, if you want it to. Many cleaning customers want a ballpark before they ask for a quote.
+      - q: Can I show that I am insured and background-checked?
+        a: Yes. The questionnaire asks for licenses, insurance and any checks, and we feature them.
+  - slug: auto-detailing
+    label: Detailers
+    query: auto detailing
+    h1: A detailing website that books packages.
+    faq:
+      - q: Can the site show my packages and prices?
+        a: Yes. Packages get a clear side-by-side comparison so customers can choose before they book.
+      - q: I am mobile only. Is that a problem?
+        a: No. The site lists the areas you travel to and asks for the address when someone books.
+  - slug: med-spa
+    label: Med spas
+    query: med spa
+    h1: A med spa website that books consultations.
+    faq:
+      - q: Can I link my existing booking software?
+        a: Yes. The booking buttons can go to the scheduler you already use.
+      - q: How do you handle what we say about treatments?
+        a: We describe what each treatment is and who it is for, in plain language, and we do not promise results. You review every page before launch.

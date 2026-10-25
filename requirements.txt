@@ -7,3 +7,4 @@ google-cloud-firestore>=2.16,<3
 google-cloud-secret-manager>=2.20,<3
 tzdata>=2024.1
 jsonschema>=4.21,<5
+cryptography>=42

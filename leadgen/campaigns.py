@@ -15,6 +15,7 @@ import uuid
 from copy import deepcopy
 from urllib.parse import urlencode, urlparse
 
+from . import strategies
 from .config import load_icp_file
 from .store import utcnow
 
@@ -23,6 +24,12 @@ SENDING_STATUSES = ("testing", "active")
 SEED_ID = "ai-readiness-audit-gaston-charlotte"
 SEED_NAME = "AI Readiness Audit · Gaston/Charlotte"
 TIERS = ("haiku", "sonnet")
+# Who a campaign targets is its strategy (icp.strategy + icp.strategy_params, the registry in
+# config/strategies.yaml). icp.site_filter is the pre-registry field: still accepted as an alias
+# and kept in step (any -> any_site, weak -> weak_site, weak_or_none -> weak_or_no_site,
+# new_listing -> new_business).
+SITE_FILTERS = tuple(strategies.FROM_SITE_FILTER)
+DEFAULT_MAX_REVIEWS = 5
 
 
 class CampaignError(ValueError):
@@ -46,6 +53,8 @@ def default_settings(settings: dict) -> dict:
         "ai_reply_cap": settings["replies"]["ai_reply_cap"],
         "test_batch_size": settings["send"]["test_batch_size"],
         "recontact_after_days": settings["discovery"]["recontact_after_days"],
+        # Preflight writes 5 sample emails; this many must pass the validator and critic.
+        "samples_required": 5,
     }
 
 
@@ -78,6 +87,19 @@ def validate(c: dict) -> dict:
         if not cell.get("segment") or not cell.get("geo") or not cell.get("query"):
             problems.append("each ICP cell needs segment, geo and query")
             break
+    site_filter = (c.get("icp") or {}).get("site_filter", "any")
+    pv = c.get("preview") or {}
+    req = (c.get("settings") or {}).get("samples_required", 5)
+    if not isinstance(req, int) or isinstance(req, bool) or not 1 <= req <= 5:
+        problems.append("settings.samples_required must be a whole number from 1 to 5")
+    if site_filter not in SITE_FILTERS:
+        problems.append(f"icp.site_filter must be one of {SITE_FILTERS}")
+    else:
+        problems.extend(strategies.validate_campaign(c))
+    if pv.get("price_fact") and pv["price_fact"].strip() not in [f.strip() for f in offer.get("facts", [])]:
+        problems.append("preview.price_fact must be one of offer.facts, word for word")
+    if pv.get("enabled") and not pv.get("price_fact"):
+        problems.append("preview.price_fact is required when the preview offer is enabled")
     seq = c.get("sequence") or []
     if seq and [s.get("step") for s in seq] != list(range(len(seq))):
         problems.append("sequence steps must be numbered 0..n-1 in order")
@@ -104,9 +126,15 @@ def new_campaign(settings: dict, *, name: str, description: str, landing_url: st
         "icp": {"cells": [_cell(x) for x in (cells or [])],
                 "exclude_domains": list(settings["discovery"]["exclude_domains"]),
                 "exclude_name_keywords": list(settings["discovery"]["exclude_name_keywords"]),
-                "prefer_kinds": list(settings["discovery"]["prefer_kinds"])},
+                "prefer_kinds": list(settings["discovery"]["prefer_kinds"]),
+                # the lead signal (config/strategies.yaml); site_filter is the legacy alias
+                "strategy": "any_site", "strategy_params": {}, "site_filter": "any"},
         "sequence": deepcopy(settings["sequence_default"]),
         "settings": default_settings(settings),
+        # Preview offer: Email 1 asks "Want to see the preview I built for you?"; a yes
+        # (reply class preview_yes) requests one from the funnel and sends Email 2.
+        # price_fact: the one offer fact (verbatim) that states the price, used in Email 2.
+        "preview": {"enabled": False, "industry": "", "price_fact": ""},
         "private": private, "cells_state": {}, "created_at": now, "updated_at": now,
     }
     return c
@@ -151,6 +179,11 @@ def ensure_seed(ledger, settings: dict) -> dict:
     return c
 
 
+def offers_preview(c: dict) -> bool:
+    """Preview campaigns: Email 1 asks "Want to see the preview I built for you?", plain text, no links."""
+    return bool((c.get("preview") or {}).get("enabled"))
+
+
 def campaign_link(c: dict, domain: str, step: int) -> str:
     base = c["landing_url"]
     sep = "&" if "?" in base else "?"
@@ -160,7 +193,7 @@ def campaign_link(c: dict, domain: str, step: int) -> str:
 
 
 EDITABLE = {"name", "description", "landing_url", "booking_url", "offer", "icp", "sequence",
-            "settings"}
+            "settings", "preview"}
 
 
 def apply_patch(c: dict, patch: dict) -> dict:
@@ -169,11 +202,29 @@ def apply_patch(c: dict, patch: dict) -> dict:
         raise CampaignError(f"these fields can't be edited directly: {sorted(bad)}")
     nxt = deepcopy(c)
     for k, v in patch.items():
-        if k in ("settings", "offer", "icp") and isinstance(v, dict):
+        if k in ("settings", "offer", "icp", "preview") and isinstance(v, dict):
             nxt[k] = {**nxt.get(k, {}), **v}
         else:
             nxt[k] = v
     if "icp" in patch:
+        icp_patch = patch["icp"] if isinstance(patch["icp"], dict) else {}
+        if "strategy" in icp_patch and "site_filter" not in icp_patch:
+            # a new strategy pick: site_filter follows it rather than overriding it
+            nxt["icp"]["site_filter"] = strategies.TO_SITE_FILTER.get(icp_patch["strategy"], "any")
+        if "strategy" in icp_patch and icp_patch["strategy"] != strategies.strategy_id(c) \
+                and "strategy_params" not in icp_patch:
+            nxt["icp"]["strategy_params"] = {}   # another strategy's settings don't carry over
+        if "strategy_params" in icp_patch and isinstance(icp_patch["strategy_params"], dict):
+            nxt["icp"]["strategy_params"] = dict(icp_patch["strategy_params"])
+            for name, legacy in strategies.LEGACY_PARAMS.get(strategies.strategy_id(nxt), {}).items():
+                if name in icp_patch["strategy_params"] and legacy not in icp_patch:
+                    nxt["icp"][legacy] = icp_patch["strategy_params"][name]
+        if nxt["icp"].get("site_filter", "any") not in SITE_FILTERS:
+            raise CampaignError(f"icp.site_filter must be one of {SITE_FILTERS}")
+        raw = nxt["icp"].get("strategy")
+        if raw and raw not in strategies.load()["by_id"]:
+            raise CampaignError(f"icp.strategy {raw!r} is not a known strategy")
+        nxt["icp"] = strategies.normalize_icp(nxt["icp"])
         nxt["icp"]["cells"] = [_cell(x) for x in nxt["icp"].get("cells", [])]
     if "settings" in patch and "writer_tier" in patch["settings"]:
         nxt["settings"]["writer_tier_manual"] = True

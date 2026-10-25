@@ -47,11 +47,16 @@ class Http:
         return r
 
 
-def make_engine(settings, ledger, *, llm=None, smtp=None, imap=None, maps=FakeMaps, landing_ok=True, verify=FakeVerify):
+def make_engine(settings, ledger, *, llm=None, smtp=None, imap=None, maps=FakeMaps, landing_ok=True, verify=FakeVerify,
+                ghl_tags=None):
+    """ghl_tags: {email: [tags]} for the stop-tag check; a callable replaces the lookup outright."""
     secrets = FakeSecrets(SECRETS)
     smtp = smtp or FakeSMTP()
+    tags = {} if ghl_tags is None else ghl_tags
+    lookup = tags if callable(tags) else (lambda email: tags.get(email, []))
     e = Engine(settings, ledger, secrets, models=MODELS, llm_client=llm or FakeLLM(), smtp_factory=smtp,
-               imap_factory=imap or (lambda mb: []), secret_names=lambda: set(SECRETS), http=Http(landing_ok))
+               imap_factory=imap or (lambda mb: []), secret_names=lambda: set(SECRETS), http=Http(landing_ok),
+               stop_lookup=lookup)
     e.discover = Rotation("discovery", [{"name": "m", "kind": "maps", "cap": 500}], {"m": maps}, secrets, ledger)
     e.scrape = Rotation("scrape", [{"name": "s"}], {"s": FakeScrape}, secrets, ledger)
     e.reader = e.scrape
@@ -197,7 +202,7 @@ def test_followup_threads_under_first_email(settings, ledger):
     e.tick()
     [lead] = ledger.leads(c["id"], "in_sequence")
     first = smtp.sent[0][0]
-    ledger.save_lead(c["id"], lead["domain"], {"seq": {**lead["seq"], "next_due": utcnow().date().isoformat()}})
+    ledger.save_lead(c["id"], lead["domain"], {"seq": {**lead["seq"], "next_due": sender_mod.today_et().isoformat()}})
     e.prospect()
     lead = ledger.lead(c["id"], lead["domain"])
     assert "1" in lead["seq"]["drafts"]
@@ -242,9 +247,9 @@ def test_mx_only_capped_at_20_percent_of_day(settings, ledger):
 
 
 # ---------------------------------------------------------------- replies
-def _sent_thread(settings, ledger, llm=None, inbox=None):
+def _sent_thread(settings, ledger, llm=None, inbox=None, ghl_tags=None):
     box = {"msgs": []}
-    e, smtp = make_engine(settings, ledger, llm=llm, imap=lambda mb: box["msgs"])
+    e, smtp = make_engine(settings, ledger, llm=llm, imap=lambda mb: box["msgs"], ghl_tags=ghl_tags)
     c = seed_active(e, ledger, daily_cap=1)
     e.prospect()
     e.tick()
@@ -399,6 +404,31 @@ def test_preflight_stays_waiting_without_landing_page(settings, ledger):
     e.prospect()
     e.tick()
     assert smtp.sent == []
+
+
+def test_deferred_launch_returns_at_once_and_tick_runs_preflight(settings, ledger):
+    e, _ = make_engine(settings, ledger)
+    c = camp.ensure_seed(ledger, settings)
+    ledger.save_campaign(c["id"], {"preflight": {"at": utcnow().isoformat(), "ok": False, "checks": {}}})  # stale, recent
+    out = e.launch(c["id"], run_preflight=False)
+    assert out == {"status": "waiting", "preflight": None, "preflight_deferred": True}
+    assert ledger.campaign(c["id"])["preflight"] is None        # cleared, so no hourly retry gap
+    e.tick()
+    after = ledger.campaign(c["id"])
+    assert after["preflight"] and after["preflight"]["ok"], after["preflight"]
+    assert after["status"] == "testing"
+
+
+def test_api_launch_does_not_wait_for_preflight(settings, ledger, monkeypatch):
+    from leadgen.api import create_app as api_app
+    e, _ = make_engine(settings, ledger)
+    c = camp.ensure_seed(ledger, settings)
+    def boom(*a, **k):
+        raise AssertionError("preflight ran inside the request")
+    monkeypatch.setattr(e, "preflight", boom)
+    client = TestClient(api_app(lambda: e))
+    r = client.post(f"/campaigns/{c['id']}/launch")
+    assert r.status_code == 200 and r.json()["status"] == "waiting"
 
 
 def test_campaign_auto_pause_on_bounce_rate(settings, ledger):

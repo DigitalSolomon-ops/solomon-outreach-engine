@@ -15,7 +15,7 @@ class SerpApiMaps:
     def __init__(self, key: str, **_):
         self.key = key
 
-    def search(self, query: str, geo: str, limit: int):
+    def search(self, query: str, geo: str, limit: int, _no_site: bool = False):
         with http_client() as c:
             resp = c.get("https://serpapi.com/search.json", params={
                 "engine": "google_maps", "type": "search",
@@ -23,12 +23,18 @@ class SerpApiMaps:
         data = check_response(resp, "serpapi")
         out = []
         for r in (data.get("local_results") or [])[:limit]:
-            if not r.get("website"):
-                continue  # no site = nothing to scrape or personalize from
-            out.append(Candidate(name=r.get("title", ""), website=r["website"],
+            if bool(r.get("website")) == _no_site:
+                continue  # no site = nothing to scrape or personalize from (except the pilot)
+            out.append(Candidate(name=r.get("title", ""), website=r.get("website", ""),
                                  phone=r.get("phone", ""), address=r.get("address", ""),
-                                 category=r.get("type", ""), source="serpapi_maps"))
+                                 category=r.get("type", ""), source="serpapi_maps",
+                                 place_id=r.get("place_id", ""), rating=r.get("rating"),
+                                 review_count=r.get("reviews")))
         return out, 1
+
+    def search_nosite(self, query: str, geo: str, limit: int):
+        """Only listings WITHOUT a website (the no-website pilot), keyed by Google listing id."""
+        return self.search(query, geo, limit, _no_site=True)
 
 
 class ApifyMaps:

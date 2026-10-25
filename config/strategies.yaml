@@ -1,0 +1,166 @@
+# Lead strategies: the lead signal a campaign targets. Schema-validated on load
+# (leadgen/strategies/__init__.py), like capabilities.yaml.
+#
+# A new offer, industry or ICP never needs code. A new KIND of signal is one module in
+# leadgen/strategies/ plus one entry here.
+#
+#   id                  stored on the campaign as icp.strategy
+#   label / description dropdown text, and the one sentence the strategist and the dashboard see
+#   source              maps | fmcsa | sam | jobs | ai_answer (where candidates come from)
+#   params              icp.strategy_params, each with a default and bounds
+#   facts               the fact ids the writer may cite for this signal (fnmatch globs)
+#   cites_site_record   true: the writer may also cite the rest of the lead record (site tech,
+#                       socials, years in business, the map listing, reviews) as before.
+#                       false: only the facts above, plus the owner's first name for the greeting.
+#   needs_preview       required | allowed | forbidden (Website Launch, the preview offer)
+#   uses_industry_list  false: segments come from the data, not config/industries.yaml
+#   providers           names from capabilities.yaml
+#   status              live | building (building = never offered in the dropdown)
+#
+# Legacy icp.site_filter values map onto the first four: any -> any_site, weak -> weak_site,
+# weak_or_none -> weak_or_no_site, new_listing -> new_business.
+
+strategies:
+
+  - id: any_site
+    label: Any business with a website
+    description: Local businesses in the industry that have a website, with the email published on their own site.
+    source: maps
+    params: {}
+    facts: [after_hours, no_chat, no_booking, no_schema, no_form]
+    cites_site_record: true
+    needs_preview: allowed
+    uses_industry_list: true
+    providers: [google_places, hasdata_maps, outscraper_maps, serpapi_maps, apify_maps, foursquare_places, geoapify_places, here_discover]
+    status: live
+
+  - id: weak_site
+    label: Weak websites
+    description: Businesses whose website is broken, not mobile-friendly, clearly outdated, or not on https.
+    source: maps
+    params: {}
+    facts: [after_hours, no_chat, no_booking, no_schema, no_form, "weak_*"]
+    cites_site_record: true
+    needs_preview: allowed
+    uses_industry_list: true
+    providers: [google_places, hasdata_maps, outscraper_maps, serpapi_maps, apify_maps]
+    status: live
+
+  - id: weak_or_no_site
+    label: Weak website or no website
+    description: Businesses with a weak website, plus businesses with no website at all whose email is printed on their own BBB page.
+    source: maps
+    params: {}
+    facts: [after_hours, no_chat, no_booking, no_schema, no_form, "weak_*", nosite]
+    cites_site_record: true
+    # Kept at required (the pre-registry rule for weak_or_none): no-website leads only make
+    # sense with the preview offer.
+    needs_preview: required
+    uses_industry_list: true
+    providers: [google_places, hasdata_maps, outscraper_maps, serpapi_maps]
+    status: live
+
+  - id: new_business
+    label: New businesses (no website, few reviews)
+    description: Map listings with no website and only a handful of reviews, which most likely opened recently; email from their own BBB page.
+    source: maps
+    params:
+      max_reviews: {type: integer, default: 5, min: 0, max: 50, label: Most reviews a listing may have}
+    facts: [nosite]
+    cites_site_record: true
+    needs_preview: required
+    uses_industry_list: true
+    providers: [google_places, hasdata_maps, outscraper_maps, serpapi_maps]
+    status: live
+
+  - id: fmcsa_new_authority
+    label: New trucking carriers (FMCSA)
+    description: Motor carriers that registered with FMCSA recently and are authorized for hire, using the email the carrier itself declared.
+    source: fmcsa
+    params:
+      days: {type: integer, default: 30, min: 1, max: 90, label: Registered within this many days}
+    facts: [fmcsa_registered]
+    cites_site_record: false
+    needs_preview: allowed
+    uses_industry_list: false
+    providers: [fmcsa_census]
+    status: live
+
+  - id: sam_new_registrant
+    label: New SAM.gov registrants
+    description: Small businesses that registered in SAM.gov recently, reached through the website they listed there.
+    source: sam
+    params:
+      days: {type: integer, default: 30, min: 1, max: 90, label: Registered within this many days}
+      naics_prefix: {type: string, default: "", max_length: 6, pattern: "^[0-9]{0,6}$", label: NAICS code starts with (optional)}
+    facts: [sam_registered]
+    cites_site_record: false
+    needs_preview: allowed
+    uses_industry_list: false
+    providers: [sam_entity]
+    status: live
+
+  - id: bad_reviews_no_replies
+    label: Low rating, no review replies
+    description: Businesses rated under a set star rating whose recent Google reviews have no replies from the owner.
+    source: maps
+    params:
+      max_rating: {type: number, default: 4.0, min: 1.0, max: 5.0, label: Rated below}
+      recent: {type: integer, default: 10, min: 3, max: 20, label: Recent reviews to check}
+    facts: [no_review_replies]
+    cites_site_record: false
+    needs_preview: allowed
+    uses_industry_list: true
+    providers: [hasdata_maps, hasdata_reviews]
+    status: live
+
+  - id: hiring_now
+    label: Hiring now
+    description: Local businesses in the trade with an open job posting, matched to their map listing and website.
+    source: jobs
+    params:
+      max_age_days: {type: integer, default: 30, min: 1, max: 60, label: Posting no older than (days)}
+    facts: [hiring]
+    cites_site_record: false
+    needs_preview: allowed
+    uses_industry_list: true
+    providers: [hasdata_indeed, hasdata_maps]
+    status: live
+
+  - id: no_online_booking
+    label: No online booking
+    description: Service businesses whose website has no booking or scheduling tool on the pages we read.
+    source: maps
+    params: {}
+    facts: [no_booking]
+    cites_site_record: false
+    needs_preview: allowed
+    uses_industry_list: true
+    providers: [google_places, hasdata_maps, outscraper_maps, serpapi_maps]
+    status: live
+
+  - id: missing_from_ai_answers
+    label: Missing from AI answers
+    description: Businesses an AI search tool did not name when asked for the best of their trade in their town.
+    source: ai_answer
+    params: {}
+    facts: [ai_answer_absent]
+    cites_site_record: false
+    needs_preview: allowed
+    uses_industry_list: true
+    providers: [tavily_answer, linkup_answer, hasdata_maps]
+    status: live
+
+  - id: domain_or_ssl_expiring
+    label: Domain or SSL expiring
+    description: Businesses whose domain registration expires soon, or whose security certificate has expired or expires soon.
+    source: maps
+    params:
+      domain_days: {type: integer, default: 60, min: 1, max: 180, label: Domain expires within (days)}
+      ssl_days: {type: integer, default: 14, min: 1, max: 60, label: Certificate expires within (days)}
+    facts: [domain_expiring, ssl_expiring]
+    cites_site_record: false
+    needs_preview: allowed
+    uses_industry_list: true
+    providers: [rdap, hasdata_maps]
+    status: live

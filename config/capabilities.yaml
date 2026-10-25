@@ -524,6 +524,89 @@ providers:
     priority: 10
     notes: "Latest vintage 2023. Business counts by county and NAICS for strategist sizing; not a lead source. Since 2025 every Census API query needs a key (keyless calls redirect to missing_key.html)."
 
+  # ----------------------------------------------------------------------- lead-strategy signals
+  # Sources for config/strategies.yaml. Researched and tested live 2026-10-25.
+  - name: fmcsa_census
+    status: wired
+    secret: null                   # keyless; an optional Socrata app token only raises the throttle
+    capabilities: [discover_carriers]
+    free: {amount: null, unit: request, period: unlimited}
+    endpoint: "GET https://data.transportation.gov/resource/kjg3-diqy.json (SoQL)"
+    docs: https://data.transportation.gov/Trucking-and-Motorcoaches/SMS-Input-Motor-Carrier-Census-Information/kjg3-diqy
+    verified: official
+    priority: 10
+    notes: >
+      SMS Input - Motor Carrier Census (monthly CSA run). Has email_address (NC 2026-10: 46,156 of
+      50,944 rows; new for-hire carriers 336/336). NOT az4n-8mr2 (Company Census): no email column.
+
+  - name: sam_entity
+    status: wired
+    secret: SAM-Gov-API-Key        # a SAM.gov account key; the api.data.gov key returns 404 here
+    capabilities: [discover_registrants]
+    free: {amount: 10, unit: request, period: day}
+    endpoint: "GET https://api.sam.gov/entity-information/v3/entities"
+    docs: https://open.gsa.gov/api/entity-api/
+    verified: official
+    priority: 10
+    notes: >
+      Public data: no point-of-contact email. Rate limit by account role (10/day with no role,
+      1,000/day with a role); the cap here assumes the low tier. 10 entities per page.
+
+  - name: hasdata_indeed
+    status: wired
+    secret: global-hasdata         # same account and credit balance as hasdata_maps
+    capabilities: [discover_jobs]
+    free: {amount: 1000, unit: credit, period: month}
+    endpoint: "GET https://api.hasdata.com/scrape/indeed/listing"
+    docs: https://docs.hasdata.com/apis/indeed/listing
+    verified: official
+    priority: 10
+    notes: "10 credits per request, shared with hasdata_maps (pool)."
+
+  - name: hasdata_reviews
+    status: wired
+    secret: global-hasdata
+    capabilities: [review_replies]
+    free: {amount: 1000, unit: credit, period: month}
+    endpoint: "GET https://api.hasdata.com/scrape/google-maps/reviews?sortBy=newestFirst"
+    docs: https://docs.hasdata.com/apis/google-maps/reviews
+    verified: official
+    priority: 10
+    notes: "10 credits per request (10 reviews), shared with hasdata_maps. Each review carries `response` when the owner replied."
+
+  - name: tavily_answer
+    status: wired
+    secret: global-tavily          # same account and 1,000-credit pool as tavily (added 2026-10-25)
+    capabilities: [ai_answer]
+    free: {amount: 1000, unit: credit, period: month}
+    endpoint: "POST https://api.tavily.com/search include_answer=advanced, search_depth=basic (1 credit)"
+    docs: https://docs.tavily.com/documentation/api-reference/endpoint/search
+    verified: official
+    priority: 5
+    notes: "The brief's first choice for missing_from_ai_answers; linkup_answer is the fallback."
+
+  - name: linkup_answer
+    status: wired
+    secret: global-linkup
+    capabilities: [ai_answer]
+    free: {amount: 20, unit: usd_credit, period: month}
+    endpoint: "POST https://api.linkup.so/v1/search outputType=sourcedAnswer"
+    docs: https://docs.linkup.so
+    verified: official
+    priority: 10
+    notes: "Same credit balance as linkup (pool). Tavily and SerpApi are not connected, so this is the answer source."
+
+  - name: rdap
+    status: wired
+    secret: null
+    capabilities: [domain_expiry]
+    free: {amount: null, unit: request, period: unlimited}
+    endpoint: "GET https://rdap.org/domain/<domain> (redirects to the registry's RDAP server)"
+    docs: https://about.rdap.org/
+    verified: official
+    priority: 10
+    notes: "Keyless. The certificate date is read from a direct TLS handshake, not a provider."
+
   # ----------------------------------------------------------------------- write
   - name: anthropic
     status: wired

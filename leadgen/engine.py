@@ -25,20 +25,26 @@ from .mailboxes import domain_health, load_pool, mailbox_retire_check, bounce_ra
 from .notify import Notifier
 from .prospect import Prospector
 from .providers import STAGES
-from .replies import ReplyAgent
+from .replies import POSITIVE, ReplyAgent
 from .rotation import Rotation
 from .sender import TickSender, today_et
+from .email2 import Email2Sender
+from .previews import PreviewClient, PreviewWorker
+from .stoptags import StopTags, ghl_lookup, ghl_preview_lookup
 from .store import utcnow
 from .writer import Writer, escalation_reason
 
 log = logging.getLogger(__name__)
 NEGATIVE = {"negative", "legal", "optout"}
+PREFLIGHT_FRESH_MINUTES = 20   # a queued or running preflight younger than this is still in flight
 
 
 class Engine:
     def __init__(self, settings: dict, ledger, secrets, *, registry=None, models=None, llm_client=None,
-                 smtp_factory=None, imap_factory=None, secret_names=None, dns_resolver=None, http=None):
+                 smtp_factory=None, imap_factory=None, secret_names=None, dns_resolver=None, http=None,
+                 stop_lookup=None, preview_client=None, stop_preview_lookup=None, job_runner=None):
         self.settings = settings
+        self._job_runner = job_runner           # tests; else starts the Cloud Run job
         self.ledger = ledger
         self.secrets = secrets
         self.registry = registry or load_registry()
@@ -48,6 +54,9 @@ class Engine:
         self.imap_factory = imap_factory
         self.dns_resolver = dns_resolver
         self.http = http or httpx
+        self._stop_lookup = stop_lookup         # email -> GHL tags (tests), else read from GHL
+        self._stop_preview_lookup = stop_preview_lookup   # preview_id -> GHL tags (tests)
+        self._preview_client = preview_client   # tests; else built from settings + the key secret
         self.report = {"errors": []}
         self.notifier = Notifier(settings, ledger, secrets, sender_creds=self._first_mailbox_creds,
                                  **({"smtp_factory": smtp_factory} if smtp_factory else {}))
@@ -70,6 +79,8 @@ class Engine:
             names.update(n for n in [p.get("secret"), *p.get("secret_aliases", [])] if n)
         names.update([self.settings["anthropic_secret"], self.settings["unsubscribe"]["hmac_secret"],
                       self.settings["notify"]["smtp_secret"], self.settings["ghl"]["secret"],
+                      self.settings["stop_tags"]["token_secret"], self.settings["stop_tags"]["location_secret"],
+                      self.settings["previews"]["key_secret"],
                       ])
         names.update(f"{self.settings['send']['mailbox_secret_prefix']}{i}" for i in range(1, 11))
         return sorted(names)
@@ -118,6 +129,20 @@ class Engine:
         self.verify = rot("verify", exclude=("mx_check",))
         self.people = rot("people") if STAGES["people"] else None
         self.sizing = rot("sizing") if STAGES["sizing"] else None
+        self._signals = {}
+
+    def signal(self, stage: str) -> Rotation:
+        """The rotation for one lead-strategy signal stage (signals.SIGNALS), built on first use."""
+        from .providers.signals import SIGNALS
+        if stage not in self._signals:
+            ov = self.settings["rotation"]["overrides"]
+            margin = self.settings["rotation"]["free_cap_margin"]
+            known = {r["name"] for r in self.inv.get("providers", [])}
+            inv = self.inv if set(SIGNALS[stage]) <= known else inventory(self.registry, self.secret_names())
+            entries = rotation_entries(self.registry, inv, stage, SIGNALS[stage], ov, margin)
+            self._signals[stage] = Rotation(stage, entries, SIGNALS[stage], self.secrets, self.ledger,
+                                            on_exhausted=lambda n, r, b: self.notifier.provider_exhausted(n, r, b))
+        return self._signals[stage]
 
     def unsub_base(self) -> str:
         return (self.settings["unsubscribe"].get("base_url") or os.environ.get("LEADGEN_UNSUB_URL", "")).rstrip("/")
@@ -219,7 +244,56 @@ class Engine:
                           notify=True)
 
     # ------------------------------------------------------------------ preflight + launch
+    # ------------------------------------------------------------------ preflight progress
+    def _progress(self, cid: str, state: str, **kw):
+        """What the dashboard shows while a preflight runs (it polls the campaign)."""
+        self.ledger.save_campaign(cid, {"preflight_progress": {"state": state, "at": utcnow().isoformat(), **kw}})
+
+    def preflight_in_flight(self, c: dict) -> bool:
+        p = c.get("preflight_progress") or {}
+        if p.get("state") not in ("queued", "running") or not p.get("at"):
+            return False
+        return datetime.fromisoformat(p["at"]) > utcnow() - timedelta(minutes=PREFLIGHT_FRESH_MINUTES)
+
+    def start_preflight_job(self, cid: str):
+        """Run preflight now, in the job (minutes of work never runs inside an HTTP request)."""
+        self._progress(cid, "queued", step="Starting", by="operator")
+        args = ["preflight", cid]
+        if self._job_runner:
+            return self._job_runner(args)
+        import google.auth
+        from google.auth.transport.requests import Request
+        creds, _ = google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+        creds.refresh(Request())
+        job = self.settings.get("job") or {}
+        url = (f"https://run.googleapis.com/v2/projects/{self.settings['gcp_project']}/locations/"
+               f"{job.get('region', 'us-central1')}/jobs/{job.get('name', 'solomon-leadgen')}:run")
+        r = httpx.post(url, headers={"Authorization": f"Bearer {creds.token}"}, timeout=30,
+                       json={"overrides": {"containerOverrides": [{"args": args}]}})
+        if r.status_code >= 300:
+            self._progress(cid, "failed", step=f"Could not start the job (HTTP {r.status_code})")
+            raise RuntimeError(f"run job HTTP {r.status_code}: {r.text[:200]}")
+        return r.json()
+
+    def run_preflight(self, cid: str) -> dict:
+        """The `preflight <campaign>` job: one campaign, now, with progress."""
+        c = self.ledger.campaign(cid)
+        if not c or c["status"] != "waiting":
+            if c:
+                self._progress(cid, "done", step=f"Skipped: campaign is {c['status']}")
+            return {"status": (c or {}).get("status"), "skipped": True}
+        try:
+            out = self.advance_waiting(c)
+        except Exception as exc:
+            self._progress(cid, "failed", step=f"Preflight stopped: {type(exc).__name__}")
+            raise
+        self.notifier.flush()
+        return out
+
     def preflight(self, c: dict, samples: int = 5) -> dict:
+        cid = c["id"]
+        need = max(1, min(int((c.get("settings") or {}).get("samples_required", samples)), samples))
+        self._progress(cid, "running", step="Checking landing page, mailbox, unsubscribe, budget")
         checks = {}
         land = self.check_landing(c)
         checks["landing"] = {"ok": land.get("preflight_ok", False),
@@ -229,34 +303,60 @@ class Engine:
         checks["mailbox"] = {"ok": bool(pool), "detail": f"{len(pool)} healthy mailbox(es)"}
         ok_b, why_b = self.budget.allowed("first_touch")
         checks["budget"] = {"ok": ok_b, "detail": why_b or "headroom available"}
+        has_ghl = self.stop_tags().lookup is not None
+        checks["stop_tags"] = {"ok": has_ghl, "detail": "GHL readable for presence:booked / presence:customer"
+                               if has_ghl else f"GHL secrets missing ({self.settings['stop_tags']['token_secret']}, "
+                               f"{self.settings['stop_tags']['location_secret']}): every send would be held"}
         checks["kill_switch"] = {"ok": not self.ledger.kill_switch_on(), "detail": "off" if not self.ledger.kill_switch_on() else "on"}
         if c.get("private") and not c["icp"]["cells"]:
             # A private test campaign (the loopback) has no prospect cells to sample from.
             checks["samples"] = {"ok": all(v["ok"] for v in checks.values()),
                                  "detail": "skipped: private test campaign with no prospect cells"}
         elif all(v["ok"] for v in checks.values()):
+            def tick(stage, done, total):
+                self._progress(cid, "running", step=stage, done=done, total=total)
             try:
-                drafts = Prospector(self).samples(c, n=samples)
+                drafts = Prospector(self).samples(c, n=samples, progress=tick)
                 good = [d for d in drafts if d["passed"]]
-                checks["samples"] = {"ok": len(good) >= samples, "detail": f"{len(good)}/{samples} drafts passed validator and critic"}
+                # No drafts at all means no business with a usable email was found, not that the
+                # writer failed: say which, so nobody goes looking at the validator.
+                detail = (f"{len(good)}/{samples} drafts passed validator and critic (needs {need})" if drafts else
+                          f"no businesses with a usable email found yet, so no sample drafts (needs {need})")
+                checks["samples"] = {"ok": len(good) >= need, "detail": detail,
+                                     "failures": [{"domain": d["domain"], "reasons": sum(d.get("attempts") or [], [])}
+                                                  for d in drafts if not d["passed"]]}
             except BudgetStop as exc:
                 checks["samples"] = {"ok": False, "detail": str(exc)}
         else:
             checks["samples"] = {"ok": False, "detail": "waits for the checks above"}
-        result = {"at": utcnow().isoformat(), "ok": all(v["ok"] for v in checks.values()), "checks": checks}
-        self.ledger.save_campaign(c["id"], {"preflight": result})
+        result = {"at": utcnow().isoformat(), "ok": all(v["ok"] for v in checks.values()), "checks": checks,
+                  "samples_required": need}
+        self.ledger.save_campaign(cid, {"preflight": result,
+                                        "preflight_progress": {"state": "done", "at": utcnow().isoformat(),
+                                                               "step": "Passed" if result["ok"] else "Finished: a check is red"}})
         return result
 
-    def launch(self, cid: str) -> dict:
+    def launch(self, cid: str, *, run_preflight: bool = True) -> dict:
+        """Move a draft/paused campaign to waiting.
+
+        run_preflight=False is what the dashboard uses: preflight writes live samples and can take
+        several minutes, longer than an HTTP request through the hub may stay open (that was the
+        "HTTP 504"). The stale preflight is cleared so the next tick runs a fresh one straight away
+        instead of waiting out the hourly retry gap. The loopback and tests keep the synchronous path.
+        """
         c = self.ledger.campaign(cid)
         if not c:
             raise camp.CampaignError("no such campaign")
         if c["status"] not in ("draft", "paused"):
             raise camp.CampaignError(f"campaign is {c['status']}; only a draft or paused campaign can be launched")
         camp.validate(c)
-        self.ledger.save_campaign(cid, {"status": "waiting", "launched_at": utcnow().isoformat()})
+        # Launching a paused campaign un-pauses it: clear the reason or the page keeps a stale "Paused" banner.
+        self.ledger.save_campaign(cid, {"status": "waiting", "launched_at": utcnow().isoformat(), "preflight": None,
+                                        "preflight_progress": None, "paused_reason": None})
         self.ledger.event("campaign_launched", f"Campaign \"{c['name']}\" launched; waiting for preflight.",
                           why="Launched by the operator.", campaign_id=cid)
+        if not run_preflight:
+            return {"status": "waiting", "preflight": None, "preflight_deferred": True}
         return self.advance_waiting(self.ledger.campaign(cid))
 
     def advance_waiting(self, c: dict) -> dict:
@@ -322,6 +422,26 @@ class Engine:
                 self._retire(mb, reason)
         return out
 
+    def preview_client(self) -> PreviewClient | None:
+        if self._preview_client is not None:
+            return self._preview_client
+        cfg = self.settings["previews"]
+        key = self.secrets.get(cfg["key_secret"])
+        return PreviewClient(cfg["base_url"], key) if key and cfg.get("base_url") else None
+
+    def stop_tags(self) -> StopTags:
+        """Fresh per tick (its cache lives one run). No GHL credentials = every send is held."""
+        lookup, by_preview = self._stop_lookup, self._stop_preview_lookup
+        if lookup is None:
+            cfg = self.settings["stop_tags"]
+            creds = {"token": self.secrets.get(cfg["token_secret"]), "location_id": self.secrets.get(cfg["location_secret"])}
+            if creds["token"] and creds["location_id"]:
+                lookup = ghl_lookup(creds)
+                by_preview = ghl_preview_lookup(creds, cfg["preview_id_field"])
+        elif by_preview is None:
+            by_preview = lambda pid: []         # noqa: E731 - tests that fake only the email lookup
+        return StopTags(self.settings, self.ledger, lookup, by_preview)
+
     # ------------------------------------------------------------------ tick
     def tick(self, now: datetime | None = None) -> dict:
         started = utcnow()
@@ -332,24 +452,32 @@ class Engine:
             expired = self.ledger.expire_stale_sending()
             pool = self.mailbox_pool()
             ghl = self.secrets.get_json(self.settings["ghl"]["secret"]) if self.settings["ghl"].get("enabled") else None
+            stops = self.stop_tags()
             replies = ReplyAgent(self.settings, self.ledger, self.llm, pool=pool, hmac_key=self.hmac_key(),
-                                 unsub_base=self.unsub_base(), notifier=self.notifier, ghl_creds=ghl,
+                                 unsub_base=self.unsub_base(), notifier=self.notifier, ghl_creds=ghl, stop_tags=stops,
                                  imap_factory=self.imap_factory, smtp_factory=self.smtp_factory).poll() if pool else {}
+            email2 = Email2Sender(self.settings, self.ledger, pool=pool, hmac_key=self.hmac_key(),
+                                  unsub_base=self.unsub_base(),
+                                  smtp_factory=self.smtp_factory or sender_smtp()) if pool else None
+            previews = PreviewWorker(self.settings, self.ledger, self.preview_client(), stop_tags=stops, email2=email2,
+                                     **({"now": (lambda: now)} if now else {})).run()
             waiting = []
             for c in self.ledger.campaigns("waiting"):
+                if self.preflight_in_flight(c):
+                    continue                # "Run preflight now" has it; don't run it twice
                 last = (c.get("preflight") or {}).get("at")
                 if not last or datetime.fromisoformat(last) < utcnow() - timedelta(hours=1):
                     waiting.append({c["id"]: self.advance_waiting(c)["status"]})
             evals = self.evaluate_tests()
             paused = self.kill_rules()
             sender = TickSender(self.settings, self.ledger, pool=self.mailbox_pool(), hmac_key=self.hmac_key(),
-                                unsub_base=self.unsub_base(),
+                                unsub_base=self.unsub_base(), stop_tags=stops,
                                 **({"smtp_factory": self.smtp_factory} if self.smtp_factory else {}),
                                 **({"now": (lambda: now)} if now else {}))
             sent = sender.run()
             self.budget.check_notices()
             self.notifier.flush()
-            body = {"expired_sending": expired, "replies": replies, "waiting": waiting,
+            body = {"expired_sending": expired, "replies": replies, "previews": previews, "waiting": waiting,
                     "test_evaluations": evals, "auto_paused": paused, "send": sent}
             rid = self._run_doc("tick", started, body)
             return {"run_id": rid, **body}
@@ -395,7 +523,7 @@ class Engine:
     def _first_touch_stats(self, c) -> tuple[int, int]:
         leads = self.ledger.leads(c["id"])
         sent = sum(1 for l in leads if 0 in (l.get("seq") or {}).get("sent_steps", []))
-        pos = sum(1 for l in leads if l.get("reply_class") in ("interested", "question", "referral"))
+        pos = sum(1 for l in leads if l.get("reply_class") in POSITIVE)
         return sent, pos
 
     def _first_touch_target(self, c) -> int:
@@ -517,6 +645,11 @@ class Engine:
             self.ledger.event("scout", f"Provider scout found {len(res['proposals'])} possible free tier(s).",
                               why="Monthly scout. Verify each before adding; nothing joins the rotation automatically.")
         return res
+
+
+def sender_smtp():
+    from .mailboxes import SmtpConn
+    return SmtpConn
 
 
 def make_engine(local: bool = False, state_path: str = ".state/leadgen.json", **kw) -> Engine:

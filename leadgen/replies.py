@@ -18,10 +18,10 @@ from datetime import date, timedelta
 from email.header import decode_header, make_header
 from email.utils import getaddresses, parseaddr
 
-from .campaigns import campaign_link
+from .campaigns import campaign_link, offers_preview
 from .compliance import ComplianceError
 from .llm import STR, STRS, BudgetStop, LLMError, obj
-from .sender import add_business_days, send_reply, today_et
+from .sender import add_business_days, send_reply, stop_tag_hold, today_et
 from .store import msgid_key, utcnow
 from .writer import BANNED, LINK_TOKEN
 
@@ -34,14 +34,30 @@ FAILED_RCPT = re.compile(r"(?:Final-Recipient|Original-Recipient):\s*rfc822;\s*<
 OOO = re.compile(r"\b(out of (?:the )?office|on vacation|away from (?:the )?office|auto(?:matic)?[- ]?reply|"
                  r"i am currently away|i'm currently away|limited access to email|will return on|"
                  r"back in the office)\b", re.I)
-CLASSIFY_SCHEMA = obj({"class": {"type": "string", "enum": ["interested", "question", "not_now", "referral",
-                                                              "pricing", "legal", "negative", "unclear"]},
+CLASSES = ("preview_yes", "interested", "question", "not_now", "referral", "pricing", "legal", "negative", "unclear")
+CLASSIFY_SCHEMA = obj({"class": {"type": "string", "enum": list(CLASSES)},
                        "confidence": {"type": "number"}, "referral_email": STR, "summary": STR})
 REPLY_SCHEMA = obj({"body": STR, "answerable": {"type": "boolean"}})
 REPLY_CRITIC_SCHEMA = obj({"pass": {"type": "boolean"}, "issues": STRS})
-CLASSES = ("interested", "question", "not_now", "referral", "pricing", "legal", "negative", "unclear")
 AUTO_REPLY = {"interested", "question", "not_now", "referral"}
-POSITIVE = {"interested", "question", "referral"}
+POSITIVE = {"preview_yes", "interested", "question", "referral"}
+# A bare yes to Email 1's "Want to see the preview I built for you?". Code decides the clear
+# cases (no model, no cost); anything with a question or a condition goes to the classifier.
+_AFFIRM = r"(?:yes|yeah|yep|yup|sure|ok|okay|absolutely|definitely|of course|why not|go ahead|sounds good|please do)"
+_SHOW = r"(?:(?:please\s+)?(?:show me|send it(?: over| my way)?|let'?s see(?: it)?|i'?d (?:like|love) to see(?: it)?))"
+PREVIEW_YES = re.compile(rf"^(?:{_AFFIRM}(?:[\s,.!]+{_AFFIRM})*(?:[\s,.!]+{_SHOW})?|{_SHOW})"
+                         r"(?:[\s,.!]+(?:please|thanks|thank you))?[\s.!]*$", re.I)
+
+
+def preview_yes_rule(text: str) -> bool:
+    """True for "yes", "sure, show me", "send it": first line only, a short signature allowed after."""
+    if "?" in text:
+        return False
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    if not lines or not PREVIEW_YES.match(lines[0]):
+        return False
+    return len(" ".join(lines[1:]).split()) <= 8
+
 HUMAN_Q = re.compile(r"\b(are you (?:a )?(?:real|human|person|bot|robot|ai)|is this (?:a )?(?:bot|ai|automated|real person)|"
                      r"am i talking to (?:a )?(?:bot|ai|person|human))\b", re.I)
 HOW_GOT = re.compile(r"\bhow (?:did|do) you (?:get|find|have) (?:my|our) (?:email|address|info)\b", re.I)
@@ -97,9 +113,11 @@ def rule_class(msg) -> tuple[str | None, str | None]:
 
 
 CLASSIFY_SYSTEM = """Classify a reply to a cold email from a small marketing studio. Return JSON only:
-{"class": "interested|question|not_now|referral|pricing|legal|negative|unclear",
+{"class": "preview_yes|interested|question|not_now|referral|pricing|legal|negative|unclear",
  "confidence": 0.0-1.0, "referral_email": "address if they point to a colleague, else empty",
  "summary": "one line"}
+preview_yes = says yes to seeing the preview we offered ("yes", "sure, show me", "send it") with no question
+or condition; a yes that also asks about price is pricing, a yes with any other question is question;
 interested = wants to talk / try it / asks how it works with intent; question = asks something about the offer;
 not_now = polite no for now; referral = points to someone else; pricing = asks about price or cost;
 legal = threats, compliance, "remove my data", lawyers, spam complaints; negative = annoyed or hostile;
@@ -176,8 +194,10 @@ FALLBACK = {
 # ------------------------------------------------------------------ the agent
 class ReplyAgent:
     def __init__(self, settings: dict, ledger, llm, *, pool: list[dict], hmac_key: str | None,
-                 unsub_base: str, notifier=None, ghl_creds=None, imap_factory=None, smtp_factory=None):
+                 unsub_base: str, notifier=None, ghl_creds=None, imap_factory=None, smtp_factory=None,
+                 stop_tags=None):
         self.settings = settings
+        self.stop_tags = stop_tags
         self.ledger = ledger
         self.llm = llm
         self.pool = pool
@@ -277,14 +297,19 @@ class ReplyAgent:
             self.ledger.save_thread(tid, thread)
             self.counts["auto"] += 1
             return "auto"
-        # ---- model classification
-        try:
-            verdict = self.llm.json("haiku", CLASSIFY_SYSTEM, f"Subject: {_hdr(msg, 'Subject')}\n\n{inbound_body[:3000]}",
-                                    purpose="reply_classify", campaign_id=c.get("id"), max_tokens=800,
-                                    schema=CLASSIFY_SCHEMA)
-        except LLMError as exc:
-            verdict = {"class": "unclear", "confidence": 0.0, "summary": f"classifier failed: {exc}"}
+        # ---- a bare yes to the preview is decided in code; everything else by the classifier
+        if offers_preview(c) and preview_yes_rule(inbound_body):
+            verdict = {"class": "preview_yes", "confidence": 1.0, "summary": "code rule: bare yes"}
+        else:
+            try:
+                verdict = self.llm.json("haiku", CLASSIFY_SYSTEM, f"Subject: {_hdr(msg, 'Subject')}\n\n{inbound_body[:3000]}",
+                                        purpose="reply_classify", campaign_id=c.get("id"), max_tokens=800,
+                                        schema=CLASSIFY_SCHEMA)
+            except LLMError as exc:
+                verdict = {"class": "unclear", "confidence": 0.0, "summary": f"classifier failed: {exc}"}
         klass = verdict.get("class") if verdict.get("class") in CLASSES else "unclear"
+        if klass == "preview_yes" and not offers_preview(c):
+            klass = "interested"            # no preview was offered, so a yes is plain interest
         conf = float(verdict.get("confidence") or 0)
         self.counts[klass] += 1
         thread["last_class"] = klass
@@ -295,6 +320,11 @@ class ReplyAgent:
         if klass == "not_now":
             until = (date.today() + timedelta(days=self.settings["replies"]["not_now_days"])).isoformat()
             self.ledger.save_lead(c["id"], lead["domain"], {"status": "not_now", "not_now_until": until})
+        if klass == "preview_yes":
+            if conf < self.settings["replies"]["min_confidence"]:
+                return self._escalate(thread, tid, c, lead, klass, inbound_body,
+                                      f"classifier confidence {conf:.2f} is under {self.settings['replies']['min_confidence']}")
+            return self._queue_preview(thread, tid, c, lead, addr, msg, inbound_body)
         escalate_why = None
         if klass not in AUTO_REPLY:
             escalate_why = f"classified {klass}"
@@ -304,11 +334,19 @@ class ReplyAgent:
             escalate_why = f"this thread already has {thread.get('ai_replies', 0)} AI replies (cap {cap})"
         if escalate_why:
             return self._escalate(thread, tid, c, lead, klass, inbound_body, escalate_why)
+        held = stop_tag_hold(self.stop_tags, addr, (lead.get("preview") or thread.get("preview") or {}).get("preview_id"))
+        if held:  # booked or a customer: a person answers, never the AI
+            return self._escalate(thread, tid, c, lead, klass, inbound_body,
+                                  "the contact is tagged booked or customer in GHL" if held == "tagged" else held)
         body = self._write_reply(c, lead, klass, inbound_body)
         if body is None:
             return self._escalate(thread, tid, c, lead, klass, inbound_body,
                                   "the reply could not be written safely from the facts and FAQ")
         link = (c.get("booking_url") or c["landing_url"]) if klass == "interested" else campaign_link(c, lead["domain"], 99)
+        pid = (lead.get("preview") or thread.get("preview") or {}).get("preview_id")
+        if pid:  # the funnel ties a booking or landing-page payment back to the preview (PREVIEW-API.md)
+            from .previews import utms, with_utm
+            link = with_utm(link, {**utms(c, lead["domain"]), "preview_id": pid})
         try:
             send_reply(self.settings, self.ledger, mb, thread, tid, addr, body, link=link,
                        hmac_key=self.hmac_key, unsub_base=self.unsub_base,
@@ -332,6 +370,27 @@ class ReplyAgent:
         return klass
 
     # --------------------------------------------------------------- helpers
+    def _queue_preview(self, thread, tid, c, lead, addr, msg, inbound) -> str:
+        """A yes queues exactly one preview request; the preview worker builds and sends Email 2.
+        No AI reply goes out: Email 2 is a template, never model-written."""
+        if (thread.get("preview") or {}).get("status"):
+            self.ledger.save_thread(tid, thread)
+            return "preview_yes_repeat"     # already queued or sent: never a second request
+        now = utcnow().isoformat()
+        preview = {"status": "queued", "requested_at": now, "to": addr,
+                   "in_reply_to": (msg.get("Message-ID") or "").strip()}
+        thread["preview"] = preview
+        self.ledger.save_thread(tid, thread)
+        # The preview worker (previews.py) picks this up in the same tick.
+        self.ledger.s.set("preview_queue", tid, {**preview, "campaign_id": c["id"], "domain": lead["domain"]},
+                          merge=False)
+        self.ledger.save_lead(c["id"], lead["domain"], {"status": "preview_requested", "preview": preview})
+        self.ledger.event("preview_yes", f"{lead.get('name') or thread['domain']} said yes to the preview.",
+                          why="They replied yes; the preview is queued and Email 2 goes out when it is ready.",
+                          cost_impact="none", campaign_id=c["id"], notify=True, thread_id=tid,
+                          detail="Their reply:\n" + inbound[:1500])
+        return "preview_yes"
+
     def _stop(self, thread, tid, c, lead, why):
         """Any reply, opt-out or bounce ends the sequence for this lead."""
         seq = lead.get("seq") or {}

@@ -4,7 +4,9 @@ Exactly-once: the send record {id: campaign:lead:step, status: sending} is creat
 BEFORE SMTP and marked sent after. A sending record older than 10 minutes becomes
 unknown and is never retried. A Firestore lease stops two ticks overlapping.
 
-Every individual send re-checks the global kill switch and the campaign's status.
+Every individual send re-checks the global kill switch, the campaign's status, suppression and
+the GHL stop tags (presence:booked / presence:customer); a stop-tag check that can't be made holds
+the send.
 Mailboxes ramp 5/day +2/day to 30; the campaign's daily cap applies on top; sends
 are spread across the tick runs inside 9:00-16:00 ET on business days.
 """
@@ -18,10 +20,11 @@ from datetime import date, datetime, timedelta
 from email.message import EmailMessage
 from email.utils import formataddr, make_msgid
 
-from .campaigns import SENDING_STATUSES, campaign_link
+from .campaigns import SENDING_STATUSES, campaign_link, offers_preview
 from .compliance import (ComplianceError, footer_html, footer_text, preflight, reply_footer_html,
                          reply_footer_text, sign_token)
 from .mailboxes import ET, SmtpConn, et_day_start, in_window, ticks_left_today, warmup_cap
+from .stoptags import StopTagUnavailable
 from .store import send_id, utcnow
 from .writer import LINK_TOKEN
 
@@ -64,8 +67,11 @@ def _html_paragraphs(text: str, link: str | None) -> str:
 
 def build_outbound(settings: dict, mailbox: dict, to_email: str, subject: str, body: str, *,
                    link: str, unsub_url: str, kind: str = "sequence", in_reply_to: str | None = None,
-                   references: list[str] | None = None) -> EmailMessage:
-    """kind: sequence (first touch / follow-up, full footer) | reply (one-line footer)."""
+                   references: list[str] | None = None, html_body: str | None = None,
+                   plain_only: bool = False) -> EmailMessage:
+    """kind: sequence (first touch / follow-up, full footer) | reply (one-line footer).
+    html_body: a pre-built HTML body (Email 2's template) used instead of the plain paragraphs.
+    plain_only: text/plain only, no HTML part (preview campaigns' Email 1 and follow-ups)."""
     cfg = settings["send"]
     creds = mailbox["creds"]
     from_email = creds["email"]
@@ -89,8 +95,10 @@ def build_outbound(settings: dict, mailbox: dict, to_email: str, subject: str, b
     msg["List-Unsubscribe"] = f"<{unsub_url}>, <mailto:{mailto}?subject=unsubscribe>"
     msg["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
     msg.set_content(text)
-    msg.add_alternative('<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5">'
-                        f"{_html_paragraphs(filled, link)}{foot}</div>", subtype="html")
+    if not plain_only:
+        msg.add_alternative('<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5">'
+                            f"{html_body if html_body is not None else _html_paragraphs(filled, link)}{foot}</div>",
+                            subtype="html")
     preflight(text, dict(msg.items()), cfg["postal_address"], unsub_url, from_email, kind=kind)
     # Bcc is never a header: the caller passes it to SMTP as an envelope recipient.
     return msg
@@ -103,8 +111,9 @@ def unsub_url(base: str, email: str, hmac_key: str) -> str:
 # ------------------------------------------------------------------ tick sender
 class TickSender:
     def __init__(self, settings: dict, ledger, *, pool: list[dict], hmac_key: str | None,
-                 unsub_base: str, smtp_factory=SmtpConn, now=utcnow):
+                 unsub_base: str, stop_tags=None, smtp_factory=SmtpConn, now=utcnow):
         self.settings = settings
+        self.stop_tags = stop_tags        # StopTags; None holds every send
         self.cfg = settings["send"]
         self.ledger = ledger
         self.pool = pool                  # healthy, active mailboxes with creds
@@ -194,6 +203,13 @@ class TickSender:
                 if self.ledger.is_suppressed(email=lead["email"], domain=lead["domain"]):
                     self.ledger.save_lead(c["id"], lead["domain"], {"status": "suppressed"})
                     continue
+                held = stop_tag_hold(self.stop_tags, lead["email"], (lead.get("preview") or {}).get("preview_id"))
+                if held == "tagged":
+                    self.ledger.save_lead(c["id"], lead["domain"], {"status": "suppressed"})
+                    continue
+                if held:
+                    out["skipped"][lead["domain"]] = held
+                    continue
                 if lead.get("verdict") == "mx_only" and lead["seq"]["next_step"] == 0:
                     if mx_today + 1 > mx_cap:
                         out["skipped"][lead["domain"]] = "mx_only share for today is used"
@@ -238,7 +254,8 @@ class TickSender:
             msg = build_outbound(self.settings, mb, lead["email"], draft["subject"], draft["body"],
                                  link=link, unsub_url=unsub_url(self.unsub_base, lead["email"], self.hmac_key),
                                  in_reply_to=seq.get("last_message_id") if step else None,
-                                 references=seq.get("references") if step else None)
+                                 references=seq.get("references") if step else None,
+                                 plain_only=offers_preview(c))
         except ComplianceError as exc:
             self.ledger.save_lead(c["id"], lead["domain"], {"status": "held_compliance", "error": str(exc)})
             self.ledger.event("compliance_hold", f"Held a send to {lead['domain']}.", why=str(exc),
@@ -296,6 +313,17 @@ class TickSender:
             update["status"] = "sequence_done"
         self.ledger.save_lead(c["id"], lead["domain"], update)
         return "sent"
+
+
+def stop_tag_hold(stop_tags, email: str, preview_id: str | None = None) -> str | None:
+    """None = clear to send; "tagged" = stop tag found (now suppressed); else why the send is held.
+    preview_id: once a lead has a preview, a contact carrying that PW Preview ID can stop it too."""
+    if stop_tags is None:
+        return "held: stop-tag check not configured"
+    try:
+        return "tagged" if stop_tags.check(email, preview_id) else None
+    except StopTagUnavailable as exc:
+        return f"held: stop-tag check unavailable ({exc})"
 
 
 def send_reply(settings: dict, ledger, mb: dict, thread: dict, tid: str, to_email: str, body: str, *,
